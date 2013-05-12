@@ -15,7 +15,7 @@ object PcapFile {
 
   private class PcapPacketIterator(decoder: PacketDecoder[DataInput, PcapPacket], dataInput: DataInput) extends Iterator[PcapPacket] {
     private var packetOrNone: Option[PcapPacket] = None
-    private var seqNo: Long = 0
+    private var seqNo: Long = 1
 
     override def hasNext: Boolean = {
       packetOrNone = try {
