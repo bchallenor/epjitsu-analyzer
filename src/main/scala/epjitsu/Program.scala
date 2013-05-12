@@ -15,10 +15,7 @@ object Program extends App {
     assert(distinctDevices.size <= 1, s"Expected one device only: $distinctDevices")
 
     val sanePackets = bulkUsbPackets sortBy (_.requestId) grouped 2 map ( _ match {
-      case Stream(in, out) =>
-        val x = SanePacketDecoder.decode((in, out))
-        println(x)
-        x //todo
+      case Stream(in, out) => SanePacketDecoder.decode((in, out))
       case other => sys.error(s"Expected an even number of USB packets")
     })
 
