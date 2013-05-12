@@ -1,23 +1,20 @@
 package epjitsu
 
-import epjitsu.utils.CloseableIterator
 import java.io._
-import java.nio.file.Path
 import org.joda.time._
 import scalaz._
 import Scalaz._
 import com.google.common.io.LittleEndianDataInputStream
 
 object PcapFile {
-  def load(path: Path): CloseableIterator[PcapPacket] = {
-    val inputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(path.toFile)))
+  def load(inputStream: InputStream): Iterator[PcapPacket] = {
     val dataInput = readHeaderMagicAndBuildDataInput(inputStream)
     val header = readHeader(dataInput)
     val decoder = networkTypeToDecoder.get(header.networkType) err s"No decoder for network type ${header.networkType}"
-    new PcapPacketIterator(decoder, inputStream, dataInput)
+    new PcapPacketIterator(decoder, dataInput)
   }
 
-  private class PcapPacketIterator(decoder: PayloadDecoder, inputStream: InputStream, dataInput: DataInput) extends CloseableIterator[PcapPacket] {
+  private class PcapPacketIterator(decoder: PayloadDecoder, dataInput: DataInput) extends Iterator[PcapPacket] {
     private var packetOrNone: Option[PcapPacket] = None
 
     override def hasNext: Boolean = {
@@ -26,17 +23,12 @@ object PcapFile {
         Some(packet)
       } catch {
         case _: EOFException =>
-          inputStream.close()
           None
       }
       packetOrNone.nonEmpty
     }
 
     override def next(): PcapPacket = packetOrNone err "No more packets"
-
-    override def close() {
-      inputStream.close()
-    }
   }
 
   private def readHeaderMagicAndBuildDataInput(inputStream: InputStream): DataInput = {

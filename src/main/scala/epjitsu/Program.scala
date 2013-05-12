@@ -1,12 +1,13 @@
 package epjitsu
 
-import java.nio.file.Paths
+import java.io.{FileInputStream, BufferedInputStream}
 
 object Program extends App {
-  val packets = PcapFile.load(Paths.get(args(0)))
+  val inputStream = new BufferedInputStream(new FileInputStream(args(0)))
   try {
+    val packets = PcapFile.load(inputStream)
     packets take 20 foreach (println(_))
   } finally {
-    packets.close()
+    inputStream.close()
   }
 }
