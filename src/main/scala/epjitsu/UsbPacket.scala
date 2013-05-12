@@ -1,8 +1,9 @@
 package epjitsu
 
 import java.io.DataInput
+import org.joda.time.DateTime
 
-case class UsbPayload(requestId: Long, packetType: UsbPacketType, xferType: UsbXferType, xferDir: UsbXferDir, bus: Int, device: Int, endpoint: Int, bytes: Array[Byte]) extends Payload
+case class UsbPacket(timestamp: DateTime, requestId: Long, packetType: UsbPacketType, xferType: UsbXferType, xferDir: UsbXferDir, bus: Int, device: Int, endpoint: Int, bytes: Array[Byte]) extends Packet
 
 sealed trait UsbPacketType
 case object UsbSubmit extends UsbPacketType
@@ -18,8 +19,8 @@ sealed trait UsbXferDir
 case object UsbIn extends UsbXferDir
 case object UsbOut extends UsbXferDir
 
-object LinuxUsbPayloadDecoder extends PayloadDecoder {
-  override def decode(dataInput: DataInput): UsbPayload = {
+object LinuxUsbPacketDecoder extends PacketDecoder[UsbPacket] {
+  override def decode(dataInput: DataInput): UsbPacket = {
     val id = dataInput.readLong()
     val packet_type = dataInput.readByte()
     val xfer_type = dataInput.readByte()
@@ -43,10 +44,12 @@ object LinuxUsbPayloadDecoder extends PayloadDecoder {
     val xferType = decodeXferType(xfer_type)
     val (endpoint, xferDir) = decodeEndpointAndXferDir(epnum)
 
+    val timestamp = new DateTime(ts_sec * 1000L + ts_usec / 1000L)
+
     val bytes = Array.ofDim[Byte](len_cap)
     dataInput.readFully(bytes)
 
-    UsbPayload(id, packetType, xferType, xferDir, busnum, devnum, endpoint, bytes)
+    UsbPacket(timestamp, id, packetType, xferType, xferDir, busnum, devnum, endpoint, bytes)
   }
 
   private def decodePacketType(packetType: Byte): UsbPacketType = {

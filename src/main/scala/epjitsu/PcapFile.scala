@@ -1,7 +1,6 @@
 package epjitsu
 
 import java.io._
-import org.joda.time._
 import scalaz._
 import Scalaz._
 import com.google.common.io.LittleEndianDataInputStream
@@ -10,20 +9,18 @@ object PcapFile {
   def load(inputStream: InputStream): Iterator[PcapPacket] = {
     val dataInput = readHeaderMagicAndBuildDataInput(inputStream)
     val header = readHeader(dataInput)
-    val decoder = networkTypeToDecoder.get(header.networkType) err s"No decoder for network type ${header.networkType}"
+    val decoder = new PcapPacketDecoder(header.networkType)
     new PcapPacketIterator(decoder, dataInput)
   }
 
-  private class PcapPacketIterator(decoder: PayloadDecoder, dataInput: DataInput) extends Iterator[PcapPacket] {
+  private class PcapPacketIterator(decoder: PacketDecoder[PcapPacket], dataInput: DataInput) extends Iterator[PcapPacket] {
     private var packetOrNone: Option[PcapPacket] = None
 
     override def hasNext: Boolean = {
       packetOrNone = try {
-        val packet = readPacket(decoder, dataInput)
-        Some(packet)
+        Some(decoder.decode(dataInput))
       } catch {
-        case _: EOFException =>
-          None
+        case _: EOFException => None
       }
       packetOrNone.nonEmpty
     }
@@ -48,24 +45,5 @@ object PcapFile {
     PcapHeader(major, minor, utcOffset, timestampSigFigs, maxPacketLength, networkType)
   }
 
-  private def readPacket(decoder: PayloadDecoder, dataInput: DataInput): PcapPacket = {
-    val timestampSecs = dataInput.readInt()
-    val timestampMicros = dataInput.readInt()
-    val timestamp = new DateTime(timestampSecs * 1000L + timestampMicros / 1000L)
-
-    val includedLength = dataInput.readInt()
-    val originalLength = dataInput.readInt()
-    if (includedLength != originalLength) sys.error(s"Missing packet data: capture includes only $includedLength bytes of $originalLength")
-
-    val payload = decoder.decode(dataInput)
-
-    PcapPacket(timestamp, payload)
-  }
-
-  private val networkTypeToDecoder: Map[Int, PayloadDecoder] = Map(
-    220 -> LinuxUsbPayloadDecoder
-  )
+  private case class PcapHeader(major: Int, minor: Int, utcOffset: Int, timestampSigFigs: Int, maxPacketLength: Int, networkType: Int)
 }
-
-sealed case class PcapHeader(major: Int, minor: Int, utcOffset: Int, timestampSigFigs: Int, maxPacketLength: Int, networkType: Int)
-sealed case class PcapPacket(timestamp: DateTime, payload: Payload)
