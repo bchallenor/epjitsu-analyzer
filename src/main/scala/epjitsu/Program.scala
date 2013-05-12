@@ -14,8 +14,10 @@ object Program extends App {
     val distinctDevices = (bulkUsbPackets map (x => (x.bus, x.device))).distinct
     assert(distinctDevices.size <= 1, s"Expected one device only: $distinctDevices")
 
-    val sanePackets = SaneTransferPhraseDecoder.decode(bulkUsbPackets)
-    sanePackets foreach (println(_))
+    val saneTransfers = SaneTransferPhraseDecoder.decode(bulkUsbPackets)
+
+    val saneCommands = SaneCommandPhraseDecoder.decode(saneTransfers)
+    saneCommands foreach (x => println(s"$x\n"))
   } finally {
     inputStream.close()
   }
