@@ -4,6 +4,7 @@ import org.joda.time.DateTime
 
 sealed trait SanePacket extends Packet {
   def direction: UsbXferDir
+  def requestId: Long
   def bytes: Array[Byte]
 
   private def directionStr = direction match {
@@ -13,7 +14,7 @@ sealed trait SanePacket extends Packet {
 
   private def bytesStr = if (bytes.size <= 72) bytes map ("0x%02x" format _) mkString("{", ", ", "}") else s"${bytes.size} bytes"
 
-  override def toString: String = s"$directionStr $bytesStr"
+  override def toString: String = f"0x$requestId%16x $directionStr $bytesStr"
 }
 
 case class SaneSend(timestamp: DateTime, requestId: Long, bytes: Array[Byte]) extends SanePacket {
