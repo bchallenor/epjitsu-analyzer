@@ -18,6 +18,10 @@ object Program extends App {
 
     val saneCommands = SaneCommandPhraseDecoder.decode(saneTransfers)
     saneCommands foreach (x => println(s"$x\n"))
+
+    val unknownCommands = (saneCommands collect { case SaneCommandPhrase(_, SaneUnknownCommandResult(command, _, _)) => command }).distinct.sorted.toList
+    val unknownCommandsStr = unknownCommands map ("0x%02x" format _) mkString("{", ", ", "}")
+    println(s"Unknown commands: $unknownCommandsStr")
   } finally {
     inputStream.close()
   }
