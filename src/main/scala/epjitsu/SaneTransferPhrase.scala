@@ -1,7 +1,7 @@
 package epjitsu
 
 case class SaneTransferPhrase(hostPacket: UsbPacket, devicePacket: UsbPacket) extends PacketPhrase[UsbPacket] {
-  override val packets = List(hostPacket, devicePacket)
+  override lazy val packets = List(hostPacket, devicePacket)
 
   require(hostPacket.packetType == UsbSubmit, s"Expected host packet to be a 'submit': $hostPacket")
   require(hostPacket.xferType == UsbBulk, s"Expected host packet to be a 'bulk' transfer: $hostPacket")
@@ -41,9 +41,7 @@ case class SaneTransferPhrase(hostPacket: UsbPacket, devicePacket: UsbPacket) ex
     case UsbIn => "<--"
   }
 
-  private def bytesStr = if (bytes.size <= 128) bytes map ("0x%02x" format _) mkString("{", ", ", "}") else s"${bytes.size} bytes"
-
-  override def toString: String = f"${hostPacket.seqNo} ${hostPacket.timestamp} 0x$requestId%016x 0x$endpoint%02x $directionStr $bytesStr"
+  override def toString: String = f"${hostPacket.seqNo} $directionStr ${formatBytes(bytes)}"
 }
 
 object SaneTransferPhraseDecoder extends PacketPhraseDecoder[UsbPacket, SaneTransferPhrase] {

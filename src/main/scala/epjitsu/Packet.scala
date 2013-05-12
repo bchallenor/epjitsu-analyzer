@@ -5,6 +5,8 @@ import org.joda.time.DateTime
 trait Packet {
   def seqNo: Long
   def timestamp: DateTime
+
+  protected def formatBytes(bytes: Array[Byte]) = if (bytes.size <= 128) bytes map ("0x%02x" format _) mkString("{", ", ", "}") else s"${bytes.size} bytes"
 }
 
 trait PacketDecoder[-I, +P <: Packet] {
