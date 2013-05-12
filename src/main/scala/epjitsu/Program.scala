@@ -7,17 +7,17 @@ object Program extends App {
   try {
     val packets = PcapFile.load(inputStream)
 
-    val usbPackets = (packets collect { case PcapPacket(_, usb: UsbPacket) => usb }).toStream
+    val usbPackets = (packets collect { case PcapPacket(_, _, usb: UsbPacket) => usb }).toStream
 
     val bulkUsbPackets = usbPackets filter (_.xferType == UsbBulk)
 
     val distinctDevices = (bulkUsbPackets map (x => (x.bus, x.device))).distinct
     assert(distinctDevices.size <= 1, s"Expected one device only: $distinctDevices")
 
-    val sanePackets = bulkUsbPackets sortBy (_.requestId) grouped 2 map ( _ match {
-      case Stream(in, out) => SanePacketDecoder.decode((in, out))
+    val sanePackets = (bulkUsbPackets sortBy (_.requestId) grouped 2).toStream map ( _ match {
+      case Stream(in, out) => SanePacketDecoder.decode(in.seqNo, (in, out))
       case other => sys.error(s"Expected an even number of USB packets")
-    })
+    }) sortBy (_.seqNo)
 
     sanePackets foreach (println(_))
   } finally {

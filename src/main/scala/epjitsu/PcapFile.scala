@@ -15,10 +15,13 @@ object PcapFile {
 
   private class PcapPacketIterator(decoder: PacketDecoder[DataInput, PcapPacket], dataInput: DataInput) extends Iterator[PcapPacket] {
     private var packetOrNone: Option[PcapPacket] = None
+    private var seqNo: Long = 0
 
     override def hasNext: Boolean = {
       packetOrNone = try {
-        Some(decoder.decode(dataInput))
+        val packet = decoder.decode(seqNo, dataInput)
+        seqNo += 1
+        Some(packet)
       } catch {
         case _: EOFException => None
       }
