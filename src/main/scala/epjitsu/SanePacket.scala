@@ -15,7 +15,7 @@ sealed trait SanePacket extends Packet {
 
   private def bytesStr = if (bytes.size <= 72) bytes map ("0x%02x" format _) mkString("{", ", ", "}") else s"${bytes.size} bytes"
 
-  override def toString: String = f"0x$requestId%016x 0x$endpoint%02x $directionStr $bytesStr"
+  override def toString: String = f"$timestamp 0x$requestId%016x 0x$endpoint%02x $directionStr $bytesStr"
 }
 
 case class SaneSend(timestamp: DateTime, requestId: Long, endpoint: Int, bytes: Array[Byte]) extends SanePacket {
