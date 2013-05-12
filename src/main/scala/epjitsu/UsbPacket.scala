@@ -19,7 +19,7 @@ sealed trait UsbXferDir
 case object UsbIn extends UsbXferDir
 case object UsbOut extends UsbXferDir
 
-object LinuxUsbPacketDecoder extends PacketDecoder[UsbPacket] {
+object LinuxUsbPacketDecoder extends PacketDecoder[DataInput, UsbPacket] {
   override def decode(dataInput: DataInput): UsbPacket = {
     val id = dataInput.readLong()
     val packet_type = dataInput.readByte()

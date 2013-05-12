@@ -13,7 +13,7 @@ object PcapFile {
     new PcapPacketIterator(decoder, dataInput)
   }
 
-  private class PcapPacketIterator(decoder: PacketDecoder[PcapPacket], dataInput: DataInput) extends Iterator[PcapPacket] {
+  private class PcapPacketIterator(decoder: PacketDecoder[DataInput, PcapPacket], dataInput: DataInput) extends Iterator[PcapPacket] {
     private var packetOrNone: Option[PcapPacket] = None
 
     override def hasNext: Boolean = {

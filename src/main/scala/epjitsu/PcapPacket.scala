@@ -7,7 +7,7 @@ import Scalaz._
 
 case class PcapPacket(timestamp: DateTime, innerPacket: Packet) extends Packet
 
-class PcapPacketDecoder(networkType: Int) extends PacketDecoder[PcapPacket] {
+class PcapPacketDecoder(networkType: Int) extends PacketDecoder[DataInput, PcapPacket] {
   private val innerDecoder = PcapPacketDecoder.networkTypeToDecoder.get(networkType) err s"No decoder for network type $networkType"
 
   def decode(dataInput: DataInput): PcapPacket = {
@@ -26,7 +26,7 @@ class PcapPacketDecoder(networkType: Int) extends PacketDecoder[PcapPacket] {
 }
 
 object PcapPacketDecoder {
-  private val networkTypeToDecoder: Map[Int, PacketDecoder[Packet]] = Map(
+  private val networkTypeToDecoder: Map[Int, PacketDecoder[DataInput, Packet]] = Map(
     220 -> LinuxUsbPacketDecoder
   )
 }
