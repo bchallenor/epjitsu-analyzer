@@ -29,6 +29,13 @@ case class SaneReceive(timestamp: DateTime, requestId: Long, endpoint: Int, byte
 object SanePacketDecoder extends PacketDecoder[(UsbPacket, UsbPacket), SanePacket] {
   def decode(input: (UsbPacket, UsbPacket)): SanePacket = {
     input match {
+      case (x, y) =>
+        val xAddress = (x.bus, x.device)
+        val yAddress = (y.bus, y.device)
+        require(xAddress == yAddress, s"Packets must be from the same bus and device: $xAddress vs $yAddress")
+    }
+
+    input match {
       case (
         UsbPacket(spTs, spId, UsbSubmit, UsbBulk, UsbOut, _, _, spEndpoint, spBytes),
         UsbPacket(_, cpId, UsbComplete, UsbBulk, UsbOut, _, _, cpEndpoint, Array())
