@@ -14,11 +14,7 @@ object Program extends App {
     val distinctDevices = (bulkUsbPackets map (x => (x.bus, x.device))).distinct
     assert(distinctDevices.size <= 1, s"Expected one device only: $distinctDevices")
 
-    val sanePackets = (bulkUsbPackets sortBy (_.requestId) grouped 2).toStream map ( _ match {
-      case Stream(in, out) => SanePacketDecoder.decode(in.seqNo, (in, out))
-      case other => sys.error(s"Expected an even number of USB packets")
-    }) sortBy (_.seqNo)
-
+    val sanePackets = SaneTransferPhraseDecoder.decode(bulkUsbPackets)
     sanePackets foreach (println(_))
   } finally {
     inputStream.close()
