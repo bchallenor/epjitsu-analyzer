@@ -3,21 +3,17 @@ package epjitsu
 import java.io.DataInput
 import org.joda.time.DateTime
 
-case class UsbPacket(seqNo: Long, timestamp: DateTime, requestId: Long, packetType: UsbPacketType, xferType: UsbXferType, xferDir: UsbXferDir, bus: Int, device: Int, endpoint: Int, bytes: Array[Byte]) extends Packet
+case class UsbPacket(seqNo: Long, timestamp: DateTime, requestId: Long, packetType: UsbPacketType, xferType: UsbTransferType, dir: TransferDir, bus: Int, device: Int, endpoint: Int, bytes: Array[Byte]) extends Packet
 
 sealed trait UsbPacketType
 case object UsbSubmit extends UsbPacketType
 case object UsbComplete extends UsbPacketType
 
-sealed trait UsbXferType
-case object UsbIsochronous extends UsbXferType
-case object UsbInterrupt extends UsbXferType
-case object UsbControl extends UsbXferType
-case object UsbBulk extends UsbXferType
-
-sealed trait UsbXferDir
-case object UsbIn extends UsbXferDir
-case object UsbOut extends UsbXferDir
+sealed trait UsbTransferType
+case object UsbIsochronous extends UsbTransferType
+case object UsbInterrupt extends UsbTransferType
+case object UsbControl extends UsbTransferType
+case object UsbBulk extends UsbTransferType
 
 object LinuxUsbPacketDecoder extends PacketDecoder[DataInput, UsbPacket] {
   override def decode(seqNo: Long, dataInput: DataInput): UsbPacket = {
@@ -60,7 +56,7 @@ object LinuxUsbPacketDecoder extends PacketDecoder[DataInput, UsbPacket] {
     }
   }
 
-  private def decodeXferType(xferType: Byte): UsbXferType = {
+  private def decodeXferType(xferType: Byte): UsbTransferType = {
     xferType match {
       case 0 => UsbIsochronous
       case 1 => UsbInterrupt
@@ -70,9 +66,9 @@ object LinuxUsbPacketDecoder extends PacketDecoder[DataInput, UsbPacket] {
     }
   }
 
-  private def decodeEndpointAndXferDir(epnum: Byte): (Int, UsbXferDir) = {
+  private def decodeEndpointAndXferDir(epnum: Byte): (Int, TransferDir) = {
     val endpoint = epnum & 0x7f
-    val xferDir = if ((epnum & 0x80) == 0) UsbOut else UsbIn
+    val xferDir = if ((epnum & 0x80) == 0) OutDir else InDir
     (endpoint, xferDir)
   }
 }

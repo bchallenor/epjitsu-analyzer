@@ -12,9 +12,9 @@ case class SaneTransferPhrase(hostPacket: UsbPacket, devicePacket: UsbPacket) ex
   private val deviceAddress: (Int, Int) = (devicePacket.bus, devicePacket.device)
   require(hostAddress == deviceAddress, s"Expected host and device packets to target the same bus and device: $hostAddress vs $deviceAddress")
 
-  val direction: UsbXferDir = {
-    require(hostPacket.xferDir == devicePacket.xferDir, s"Expected host and device packets to have the same direction: ${hostPacket.xferDir} vs ${devicePacket.xferDir}")
-    hostPacket.xferDir
+  val direction: TransferDir = {
+    require(hostPacket.dir == devicePacket.dir, s"Expected host and device packets to have the same direction: ${hostPacket.dir} vs ${devicePacket.dir}")
+    hostPacket.dir
   }
 
   val requestId: Long = {
@@ -28,17 +28,17 @@ case class SaneTransferPhrase(hostPacket: UsbPacket, devicePacket: UsbPacket) ex
   }
 
   val bytes: Array[Byte] = direction match {
-    case UsbIn =>
+    case InDir =>
       require(hostPacket.bytes.isEmpty, s"Expected empty host bytes for 'in' transfer: ${hostPacket.bytes}")
       devicePacket.bytes
-    case UsbOut =>
+    case OutDir =>
       require(devicePacket.bytes.isEmpty, s"Expected empty device bytes for 'out' transfer: ${devicePacket.bytes}")
       hostPacket.bytes
   }
 
   private lazy val directionStr = direction match {
-    case UsbOut => "-->"
-    case UsbIn => "<--"
+    case OutDir => "-->"
+    case InDir => "<--"
   }
 
   override def toString: String = f"${hostPacket.seqNo} $directionStr ${formatBytes(bytes)}"

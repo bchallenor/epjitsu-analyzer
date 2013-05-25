@@ -20,7 +20,7 @@ object SaneCommandPhrase {
   def isCommand(transfer: SaneTransferPhrase): Boolean = getCommandOrNone(transfer).isDefined
 
   def getCommandOrNone(transfer: SaneTransferPhrase): Option[Int] = {
-    if (transfer.direction == UsbOut) {
+    if (transfer.direction == OutDir) {
       transfer.bytes match {
         case Array(0x1b, cmd) => Some(cmd & 0xff)
         case _ => None
