@@ -43,7 +43,7 @@ case class UsbBulkTransfer(hostPacket: UsbPacket, devicePacket: UsbPacket) exten
     case InDir => "<--"
   }
 
-  override def toString: String = f"${hostPacket.seqNo} $directionStr ${BytesPrettyPrint.prettyPrint(bytes)}"
+  override def toString: String = f"#${hostPacket.seqNo} $hostAddress $directionStr $deviceAddress ${BytesPrettyPrint.prettyPrint(bytes)}"
 }
 
 object UsbBulkTransfer {
