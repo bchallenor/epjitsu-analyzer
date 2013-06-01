@@ -1,6 +1,7 @@
 package epjitsu
 
 import java.io.{FileInputStream, BufferedInputStream}
+import scala.collection.immutable.SortedSet
 
 object Program extends App {
   val inputStream = new BufferedInputStream(new FileInputStream(args(0)))
@@ -11,15 +12,12 @@ object Program extends App {
 
     val bulkUsbPackets = usbPackets filter (_.xferType == UsbBulk)
 
-    val distinctDevices = (bulkUsbPackets map (x => (x.bus, x.device))).distinct
-    assert(distinctDevices.size <= 1, s"Expected one device only: $distinctDevices")
+    val bulkTransfers = UsbBulkTransferDecoder.decode(bulkUsbPackets) map (_.value)
 
-    val saneTransfers = SaneTransferPhraseDecoder.decode(bulkUsbPackets)
-
-    val saneCommands = SaneCommandPhraseDecoder.decode(saneTransfers)
+    val saneCommands = SaneCommandPhraseDecoder.decode(bulkTransfers) map (_.value)
     saneCommands foreach (x => println(s"$x\n"))
 
-    val unknownCommands = (saneCommands collect { case SaneCommandPhrase(_, SaneUnknownCommandResult(command, _, _)) => command }).distinct.sorted.toList
+    val unknownCommands = (saneCommands collect { case SaneCommand(_, SaneUnknownCommandResult(command, _, _)) => command }).distinct.sorted.toList
     val unknownCommandsStr = unknownCommands map ("0x%02x" format _) mkString("{", ", ", "}")
     println(s"Unknown commands: $unknownCommandsStr")
   } finally {

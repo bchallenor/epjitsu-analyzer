@@ -1,5 +1,7 @@
 package epjitsu
 
+import scala.collection.immutable.SortedSet
+
 sealed trait SaneCommandResult
 
 case class SaneHardwareStatusCommandResult(bytes: Vector[Byte]) extends SaneCommandResult
@@ -38,12 +40,12 @@ case class SaneScanD6CommandResult(commandResult: Int, bytes: Array[Byte]) exten
   override def toString: String = s"SaneScanD6CommandResult($commandResult, ${bytes.length})"
 }
 
-case class SaneUnknownCommandResult(command: Int, commandTransfer: SaneTransferPhrase, otherTransfers: List[SaneTransferPhrase]) extends SaneCommandResult {
+case class SaneUnknownCommandResult(command: Int, commandTransfer: UsbBulkTransfer, otherTransfers: SortedSet[UsbBulkTransfer]) extends SaneCommandResult {
   override def toString: String = f"0x$command%02x\n${otherTransfers mkString "\n"}"
 }
 
 object SaneCommandResult {
-  def apply(command: Int, commandTransfer: SaneTransferPhrase, otherTransfers: List[SaneTransferPhrase]): SaneCommandResult = (command, otherTransfers) match {
+  def apply(command: Int, commandTransfer: UsbBulkTransfer, otherTransfers: SortedSet[UsbBulkTransfer]): SaneCommandResult = (command, otherTransfers.toList) match {
     case (0x33, List(t1)) => SaneHardwareStatusCommandResult(t1.bytes.toVector)
     case (0x43, List(t1)) => SaneRead43CommandResult(t1.bytes.toVector)
     case (0xb0, _) => SaneUnknownCommandResult(command, commandTransfer, otherTransfers)
@@ -67,14 +69,14 @@ object SaneCommandResult {
     case _ => SaneUnknownCommandResult(command, commandTransfer, otherTransfers)
   }
 
-  private def extractResult(transfer: SaneTransferPhrase): Int = {
+  private def extractResult(transfer: UsbBulkTransfer): Int = {
     transfer.bytes match {
       case Array(x) => x & 0xff
       case other => sys.error(s"Expected single byte: ${transfer.bytes.toVector}")
     }
   }
 
-  private def extractBoolean(transfer: SaneTransferPhrase): Boolean = {
+  private def extractBoolean(transfer: UsbBulkTransfer): Boolean = {
     transfer.bytes match {
       case Array(0x00) => false
       case Array(0x01) => true
@@ -82,7 +84,7 @@ object SaneCommandResult {
     }
   }
 
-  private def joinBytes(transfers: List[SaneTransferPhrase]): Array[Byte] = {
+  private def joinBytes(transfers: List[UsbBulkTransfer]): Array[Byte] = {
     transfers.toArray flatMap (_.bytes)
   }
 }

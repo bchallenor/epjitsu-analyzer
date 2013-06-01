@@ -1,25 +1,26 @@
 package epjitsu
 
+import UsbBulkTransfer.UsbBulkTransferPhrase
 import scalaz._
 import Scalaz._
+import scala.collection.immutable.SortedSet
 
-case class SaneCommandPhrase(transfers: List[SaneTransferPhrase], commandResult: SaneCommandResult) extends PacketPhrase[SaneTransferPhrase] {
-  override def packets = transfers
-  override def toString: String = commandResult.toString
+case class SaneCommand(transfers: SortedSet[UsbBulkTransfer], commandResult: SaneCommandResult) extends Packet {
+  val seqNo: Long = transfers.head.seqNo
 }
 
-object SaneCommandPhrase {
-  def apply(transfers: List[SaneTransferPhrase]): SaneCommandPhrase = {
+object SaneCommand {
+  def apply(transfers: SortedSet[UsbBulkTransfer]): SaneCommand = {
     val commandTransfer = transfers.headOption err "Expected at least one transfer"
     val command = getCommandOrNone(commandTransfer) err s"Expected first transfer to be command: $commandTransfer"
     val otherTransfers = transfers.tail
     val commandResult = SaneCommandResult(command, commandTransfer, otherTransfers)
-    SaneCommandPhrase(transfers, commandResult)
+    SaneCommand(transfers, commandResult)
   }
 
-  def isCommand(transfer: SaneTransferPhrase): Boolean = getCommandOrNone(transfer).isDefined
+  def isCommand(transfer: UsbBulkTransfer): Boolean = getCommandOrNone(transfer).isDefined
 
-  def getCommandOrNone(transfer: SaneTransferPhrase): Option[Int] = {
+  def getCommandOrNone(transfer: UsbBulkTransfer): Option[Int] = {
     if (transfer.direction == OutDir) {
       transfer.bytes match {
         case Array(0x1b, cmd) => Some(cmd & 0xff)
@@ -31,10 +32,11 @@ object SaneCommandPhrase {
   }
 }
 
-object SaneCommandPhraseDecoder extends PacketPhraseDecoder[SaneTransferPhrase, SaneCommandPhrase] {
-  def decode(transfers: Stream[SaneTransferPhrase]): Stream[SaneCommandPhrase] = {
-    // Split transfers at commands after sorting by host seqNo
-    splitBefore(transfers sortBy (_.hostPacket.seqNo), SaneCommandPhrase.isCommand(_: SaneTransferPhrase)) map (SaneCommandPhrase(_))
+object SaneCommandPhraseDecoder extends PacketPhraseDecoder[UsbBulkTransfer, SaneCommand] {
+  def decode(transfers: Stream[UsbBulkTransfer]): Stream[UsbBulkTransferPhrase[SaneCommand]] = {
+    // Split transfers at commands
+    val splitAtCommands = splitBefore(transfers, (x: UsbBulkTransfer) => SaneCommand.isCommand(x))
+    splitAtCommands map (_.to[SortedSet]) map (ps => PacketPhrase(ps, SaneCommand(ps)))
   }
 
   private def splitBefore[A](elements: Stream[A], predicate: A => Boolean): Stream[List[A]] = {

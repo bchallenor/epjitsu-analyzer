@@ -5,6 +5,10 @@ import org.joda.time.DateTime
 
 case class UsbPacket(seqNo: Long, timestamp: DateTime, requestId: Long, packetType: UsbPacketType, xferType: UsbTransferType, dir: TransferDir, bus: Int, device: Int, endpoint: Int, bytes: Array[Byte]) extends Packet
 
+object UsbPacket {
+  type UsbPacketPhrase[A] = PacketPhrase[UsbPacket, A]
+}
+
 sealed trait UsbPacketType
 case object UsbSubmit extends UsbPacketType
 case object UsbComplete extends UsbPacketType
