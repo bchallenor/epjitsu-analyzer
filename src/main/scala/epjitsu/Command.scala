@@ -10,20 +10,24 @@ import epjitsu.Transfer.TransferPhrase
 case class Command(headerTransfer: TransferPhrase[CommandHeader], bodyTransfers: List[TransferPhrase[CommandBody[Any]]]) extends Packet {
   override lazy val seqNo = headerTransfer.packets.head.seqNo
 
-  override def toString: String = {
+  override def toString: String = toString(showUnderlying = false)
+
+  def toString(showUnderlying: Boolean): String = {
     val sb = new StringBuilder()
-    appendTransfer(sb, headerTransfer)
-    bodyTransfers foreach (appendTransfer(sb, _))
+    appendTransfer(sb, showUnderlying, headerTransfer)
+    bodyTransfers foreach (appendTransfer(sb, showUnderlying, _))
     sb.toString()
   }
 
-  private def appendTransfer(sb: StringBuilder, partTransfer: TransferPhrase[CommandPart]) {
+  private def appendTransfer(sb: StringBuilder, showUnderlying: Boolean, partTransfer: TransferPhrase[CommandPart]) {
     sb.append(partTransfer.value)
     sb.append("\n")
 
-    partTransfer.packets foreach { transfer =>
-      sb.append(transfer)
-      sb.append("\n")
+    if (showUnderlying) {
+      partTransfer.packets foreach { packet =>
+        sb.append(packet)
+        sb.append("\n")
+      }
     }
   }
 }
