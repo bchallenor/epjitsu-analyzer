@@ -1,16 +1,14 @@
 package epjitsu
 
-import UsbPacket.UsbPacketPhrase
-import util.BytesPrettyPrinter._
-import scala.collection.immutable.SortedSet
+import epjitsu.util.PrettyPrint.BytesPrettyPrint
 
-case class UsbBulkTransfer(hostPacket: UsbPacket, devicePacket: UsbPacket) extends Packet {
+case class UsbBulkTransfer(hostPacket: UsbPacket, devicePacket: UsbPacket) extends Transfer with Packet {
   require(hostPacket.packetType == UsbSubmit, s"Expected host packet to be a 'submit': $hostPacket")
   require(hostPacket.xferType == UsbBulk, s"Expected host packet to be a 'bulk' transfer: $hostPacket")
   require(devicePacket.packetType == UsbComplete, s"Expected device packet to be a 'complete': $devicePacket")
   require(devicePacket.xferType == UsbBulk, s"Expected device packet to be a 'bulk' transfer: $devicePacket")
 
-  val seqNo: Long = hostPacket.seqNo
+  override val seqNo: Long = hostPacket.seqNo
 
   private val hostAddress: (Int, Int) = (hostPacket.bus, hostPacket.device)
   private val deviceAddress: (Int, Int) = (devicePacket.bus, devicePacket.device)
@@ -45,21 +43,21 @@ case class UsbBulkTransfer(hostPacket: UsbPacket, devicePacket: UsbPacket) exten
     case InDir => "<--"
   }
 
-  override def toString: String = f"${hostPacket.seqNo} $directionStr ${bytes.prettyPrint()}"
+  override def toString: String = f"${hostPacket.seqNo} $directionStr ${BytesPrettyPrint.prettyPrint(bytes)}"
 }
 
 object UsbBulkTransfer {
   type UsbBulkTransferPhrase[A] = PacketPhrase[UsbBulkTransfer, A]
 }
 
-object UsbBulkTransferDecoder extends PacketPhraseDecoder[UsbPacket, UsbBulkTransfer] {
-  def decode(bulkUsbPackets: Stream[UsbPacket]): Stream[UsbPacketPhrase[UsbBulkTransfer]] = {
+object UsbBulkTransferDecoder extends PacketStreamDecoder[UsbPacket, UsbBulkTransfer] {
+  override def decode(bulkUsbPackets: Stream[UsbPacket]): Stream[UsbBulkTransfer] = {
     // Pair off packets after sorting by (requestId, seqNo)
     val transfers = (bulkUsbPackets sortBy (x => (x.requestId, x.seqNo)) grouped 2).toStream map ( _ match {
-      case Stream(host, device) => PacketPhrase(SortedSet(host, device), UsbBulkTransfer(host, device))
+      case Stream(host, device) => UsbBulkTransfer(host, device)
       case other => sys.error(s"Expected an even number of USB packets")
     })
     // Put back in original order
-    transfers sortBy (_.value.seqNo)
+    transfers sortBy (_.seqNo)
   }
 }

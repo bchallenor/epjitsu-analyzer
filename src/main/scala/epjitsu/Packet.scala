@@ -20,6 +20,10 @@ trait PacketDecoder[-I, +P <: Packet] {
   def decode(seqNo: Long, input: I): P
 }
 
+trait PacketStreamDecoder[P <: Packet, Q <: Packet] {
+  def decode(inputPackets: Stream[P]): Stream[Q]
+}
+
 case class PacketPhrase[P <: Packet, +A](packets: SortedSet[P], value: A) {
   def map[B](f: A => B): PacketPhrase[P, B] = PacketPhrase(packets, f(value))
 
@@ -54,8 +58,4 @@ object PacketPhrase {
     override def point[A](a: => A): PacketPhrase[P, A] = PacketPhrase[P, A](SortedSet.empty[P], a)
     override def bind[A, B](r: PacketPhrase[P, A])(f: A => PacketPhrase[P, B]): PacketPhrase[P, B] =  r flatMap f
   }
-}
-
-trait PacketPhraseDecoder[P <: Packet, +A] {
-  def decode(inputPackets: Stream[P]): Stream[PacketPhrase[P, A]]
 }
