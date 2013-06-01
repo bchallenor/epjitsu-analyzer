@@ -34,7 +34,7 @@ object CommandParser extends Parsers {
     asCommand(sendCommandHeader(0xc5, "set lut"), receiveReturnCode, sendPayload, receiveReturnCode) |
     asCommand(sendCommandHeader(0xc6, "set coarse cal"), receiveReturnCode, sendPayload, receiveReturnCode) |
     asCommand(sendCommandHeader(0xd0, "set lamp"), receiveReturnCode, sendBoolean, receiveReturnCode) |
-    asCommand(sendCommandHeader(0xd1, "set window"), receiveReturnCode, sendPayload) |
+    asCommand(sendCommandHeader(0xd1, "set window"), receiveReturnCode, sendPayload, receiveReturnCode) |
     asCommand(sendCommandHeader(0xd2, "get scan data #d2"), receiveReturnCode, receivePayload) |
     asCommand(sendCommandHeader(0xd3, "get scan data #d3"), receiveReturnCode, receivePayload) |
     asCommand(sendCommandHeader(0xd4, "ingest paper"), receiveReturnCode, sendBoolean, receiveReturnCode) |
