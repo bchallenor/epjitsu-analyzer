@@ -10,6 +10,11 @@ import epjitsu.Transfer.TransferPhrase
 case class Command(headerTransfer: TransferPhrase[CommandHeader], bodyTransfers: List[TransferPhrase[CommandBody[Any]]], isDuplicate: Boolean = false) extends Packet {
   override lazy val seqNo = headerTransfer.packets.head.seqNo
 
+  lazy val withoutUnderlying: Command = copy(
+    headerTransfer = implicitly[Monad[TransferPhrase]].pure(headerTransfer.value),
+    bodyTransfers = bodyTransfers map (x => implicitly[Monad[TransferPhrase]].pure(x.value))
+  )
+
   override def toString: String = toString(showUnderlying = false)
 
   def toString(showUnderlying: Boolean): String = {
@@ -33,13 +38,8 @@ case class Command(headerTransfer: TransferPhrase[CommandHeader], bodyTransfers:
 }
 
 object Command {
-  def isDuplicate(prevCommand: Command, command: Command): Boolean = {
-    (prevCommand.headerTransfer.value == command.headerTransfer.value) &&
-      (prevCommand.bodyTransfers map (_.value)) == (command.bodyTransfers map (_.value))
-  }
-
   def flagIfDuplicate(prevCommand: Command, command: Command): Command = {
-    if (isDuplicate(prevCommand, command)) command.copy(isDuplicate = true) else command
+    if (prevCommand.withoutUnderlying == command.withoutUnderlying) command.copy(isDuplicate = true) else command
   }
 
   def flagIfDuplicate(prevCommandOrNone: Option[Command], command: Command): Command = {
