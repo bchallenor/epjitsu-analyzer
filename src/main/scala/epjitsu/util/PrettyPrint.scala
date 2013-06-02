@@ -19,6 +19,10 @@ object PrettyPrint {
     override def prettyPrint(value: Byte) = f"0x$value%02x"
   }
 
+  implicit object ShortPrettyPrint extends PrettyPrint[Short] {
+    override def prettyPrint(value: Short) = f"0x$value%04x"
+  }
+
   implicit object BytesPrettyPrint extends PrettyPrint[DeepByteArray] {
     val maxSize: Int = 128
     val maxRowSize: Int = 16

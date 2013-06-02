@@ -79,6 +79,7 @@ object CommandParser extends Parsers {
     }))
 
   private lazy val receiveReturnCode = asCommandBody("return code", byte(InDir))
+  private lazy val receiveShort = asCommandBody("short", short(InDir))
   private lazy val receiveStatusFlags = asCommandBody("status flags", bitSet(InDir, 16) ^^ lift(x => x -> SaneStatusFlag.unpack(x)))
   private lazy val receiveSensorFlags = asCommandBody("sensor flags", bitSet(InDir, 32) ^^ lift(x => x -> SaneSensorFlag.unpack(x)))
   private lazy val receiveIdentifiers = asCommandBody("manufacturer name -> product name", string(InDir) ^^ lift(x => (x.substring(0, 8).trim, x.substring(8, 32).trim)))
@@ -114,6 +115,11 @@ object CommandParser extends Parsers {
     matchBytes(direction, "Single boolean", {
       case Array(0x00) => false
       case Array(0x01) => true
+    })
+
+  private def short(direction: TransferDir): Parser[TransferPhrase[Short]] =
+    matchBytes(direction, "Single short", {
+      case bytes if bytes.length == 2 => ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getShort
     })
 
   private def int(direction: TransferDir): Parser[TransferPhrase[Int]] =
