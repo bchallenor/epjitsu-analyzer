@@ -5,12 +5,13 @@ import scalaz._
 import Scalaz._
 import scala.collection.immutable.SortedSet
 import epjitsu.util.PrettyPrint.BytesPrettyPrint
+import epjitsu.util.XInstances._
 
 object Program extends App {
   val unknownCommands = parsePcapFiles(new File(args(0)))
   println(s"Unknown commands: ${BytesPrettyPrint.prettyPrint(unknownCommands.toArray)}")
 
-  def parsePcapFiles(dir: File): Set[Byte] =  {
+  def parsePcapFiles(dir: File): SortedSet[Byte] =  {
     val pcapFiles = dir.listFiles(new FilenameFilter {
       def accept(dir: File, name: String): Boolean = name.endsWith(".pcap")
     })
@@ -19,7 +20,7 @@ object Program extends App {
     unknownCommands
   }
 
-  def parsePcapFile(pcapFile: File): Set[Byte] = {
+  def parsePcapFile(pcapFile: File): SortedSet[Byte] = {
     val outputFile = new File(pcapFile.getParentFile, pcapFile.getName + ".log")
     println(s"Decoding $pcapFile to $outputFile...")
 
@@ -57,7 +58,7 @@ object Program extends App {
       outputWriter.write("=" * 80)
       outputWriter.write('\n')
 
-      val unknownCommands = (commands collect { case Command(PacketPhrase(_, UnknownCommandHeader(commandCode)), _, _) => commandCode }).toSet
+      val unknownCommands = (commands collect { case Command(PacketPhrase(_, UnknownCommandHeader(commandCode)), _, _) => commandCode }).to[SortedSet]
       outputWriter.write(s"Unknown commands: ${BytesPrettyPrint.prettyPrint(unknownCommands.toArray)}")
       outputWriter.write('\n')
       unknownCommands
