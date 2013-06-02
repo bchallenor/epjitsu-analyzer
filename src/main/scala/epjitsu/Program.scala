@@ -40,15 +40,21 @@ object Program extends App {
 //        outputWriter.write('\n')
 //      }
 
-      val commands = CommandPhraseDecoder.decode(bulkTransfers)
+      val commands = Command.flagDuplicates(CommandPhraseDecoder.decode(bulkTransfers))
       commands foreach { x =>
-        outputWriter.write(x.toString(showUnderlying = false))
-        outputWriter.write('\n')
+        if (x.isDuplicate) {
+          // Don't print duplicates
+          val commandCode = x.headerTransfer.value.commandCode
+          assert(commandCode == 0x03 || commandCode == 0x33, s"Expected only status/sensor flag commands to be duplicates: ${x.headerTransfer.value}")
+        } else {
+          outputWriter.write(x.toString(showUnderlying = false))
+          outputWriter.write('\n')
+        }
       }
 
       assertNoPacketsMissing(singleDeviceBulkUsbPackets, commands)
 
-      val unknownCommands = (commands collect { case Command(PacketPhrase(_, UnknownCommandHeader(commandCode)), _) => commandCode }).toSet
+      val unknownCommands = (commands collect { case Command(PacketPhrase(_, UnknownCommandHeader(commandCode)), _, _) => commandCode }).toSet
       unknownCommands
     } finally {
       inputStream.close()

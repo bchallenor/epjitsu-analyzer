@@ -7,7 +7,7 @@ import epjitsu.util.parsing._
 import epjitsu.util.PrettyPrint
 import epjitsu.Transfer.TransferPhrase
 
-case class Command(headerTransfer: TransferPhrase[CommandHeader], bodyTransfers: List[TransferPhrase[CommandBody[Any]]]) extends Packet {
+case class Command(headerTransfer: TransferPhrase[CommandHeader], bodyTransfers: List[TransferPhrase[CommandBody[Any]]], isDuplicate: Boolean = false) extends Packet {
   override lazy val seqNo = headerTransfer.packets.head.seqNo
 
   override def toString: String = toString(showUnderlying = false)
@@ -29,6 +29,32 @@ case class Command(headerTransfer: TransferPhrase[CommandHeader], bodyTransfers:
         sb.append("\n")
       }
     }
+  }
+}
+
+object Command {
+  def isDuplicate(prevCommand: Command, command: Command): Boolean = {
+    (prevCommand.headerTransfer.value == command.headerTransfer.value) &&
+      (prevCommand.bodyTransfers map (_.value)) == (command.bodyTransfers map (_.value))
+  }
+
+  def flagIfDuplicate(prevCommand: Command, command: Command): Command = {
+    if (isDuplicate(prevCommand, command)) command.copy(isDuplicate = true) else command
+  }
+
+  def flagIfDuplicate(prevCommandOrNone: Option[Command], command: Command): Command = {
+    prevCommandOrNone map (flagIfDuplicate(_, command)) getOrElse command
+  }
+
+  def flagDuplicates(prevCommandOrNone: Option[Command], commands: Stream[Command]): Stream[Command] = {
+    commands match {
+      case Stream.Empty => Stream.Empty
+      case command #:: rest => flagIfDuplicate(prevCommandOrNone, command) #:: flagDuplicates(Some(command), rest)
+    }
+  }
+
+  def flagDuplicates(commands: Stream[Command]): Stream[Command] = {
+    flagDuplicates(None, commands)
   }
 }
 
