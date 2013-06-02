@@ -72,7 +72,7 @@ trait CommandHeader extends CommandPart {
 case class KnownCommandHeader(commandCode: Byte, commandName: String) extends CommandHeader
 
 case class UnknownCommandHeader(commandCode: Byte) extends CommandHeader {
-  override def commandName: String = "unknown"
+  override def commandName: String = "???"
 }
 
 case class CommandBody[+A](name: String, direction: TransferDir, value: A)(implicit pp: PrettyPrint[A]) extends CommandPart {

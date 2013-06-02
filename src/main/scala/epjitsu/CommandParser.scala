@@ -19,15 +19,15 @@ object CommandParser extends Parsers {
     asCommand(sendCommandHeader(0x06, "load firmware"), receiveReturnCode, sendLengthPrefixedPayloadAndChecksum, receiveReturnCode) |
     asCommand(sendCommandHeader(0x13, "get identifiers"), receiveIdentifiers) |
     asCommand(sendCommandHeader(0x16, "re-init firmware"), receiveReturnCode, sendByte, receiveReturnCode) |
-    // 0x24
+    //asCommand(sendCommandHeader(0x24, "???"), receivePayload) |
     asCommand(sendCommandHeader(0x33, "get sensor flags"), receiveSensorFlags) |
     asCommand(sendCommandHeader(0x43, "get scan status"), receivePayload) |
-    // 0xb0
-    // 0xb2
-    // 0xb3
-    // 0xb4
-    // 0xb5
-    // 0xb6
+    //asCommand(sendCommandHeader(0xb0, "???"), receiveReturnCode, sendByte, receiveReturnCode) |
+    //asCommand(sendCommandHeader(0xb2, "???"), receiveReturnCode, sendByte, receiveReturnCode) |
+    //asCommand(sendCommandHeader(0xb3, "???"), receiveReturnCode, sendByte, receiveReturnCode) |
+    //asCommand(sendCommandHeader(0xb4, "???"), receiveReturnCode, sendByte, receiveReturnCode) |
+    //asCommand(sendCommandHeader(0xb5, "???"), receiveReturnCode, receiveShort) |
+    //asCommand(sendCommandHeader(0xb6, "???"), receiveReturnCode, receiveShort) |
     asCommand(sendCommandHeader(0xc3, "set fine cal #1"), receiveReturnCode, sendHeader, sendPayload, receiveReturnCode) |
     asCommand(sendCommandHeader(0xc4, "set fine cal #2"), receiveReturnCode, sendHeader, sendPayload, receiveReturnCode) |
     asCommand(sendCommandHeader(0xc5, "set lut"), receiveReturnCode, sendPayload, receiveReturnCode) |
@@ -38,8 +38,8 @@ object CommandParser extends Parsers {
     asCommand(sendCommandHeader(0xd3, "get scan data #d3"), receiveReturnCode, receivePayload) |
     asCommand(sendCommandHeader(0xd4, "set paper feed"), receiveReturnCode, sendByte, receiveReturnCode) |
     asCommand(sendCommandHeader(0xd6, "start scan"), receiveReturnCode) |
-    // 0xd8
-    // 0xe1
+    //asCommand(sendCommandHeader(0xd8, "???"), receiveReturnCode, sendByte, receiveReturnCode) |
+    //asCommand(sendCommandHeader(0xe1, "???"), receiveReturnCode, sendByte, receiveReturnCode) |
     unknownCommand
 
   private lazy val unknownCommand: Parser[Command] =
@@ -75,7 +75,7 @@ object CommandParser extends Parsers {
   private lazy val anyNonCommand: Parser[TransferPhrase[CommandBody[DeepByteArray]]] =
     acceptMatch("Bytes not matching {0x1b, _}", Function.unlift(x => x.bytes match {
       case Array(0x1b, _) => None
-      case _ => Some(PacketPhrase(SortedSet(x), CommandBody("unknown non-command", x.direction, DeepByteArray(x.bytes))))
+      case _ => Some(PacketPhrase(SortedSet(x), CommandBody("unknown bytes", x.direction, DeepByteArray(x.bytes))))
     }))
 
   private lazy val receiveReturnCode = asCommandBody("return code", byte(InDir))
