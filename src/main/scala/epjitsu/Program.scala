@@ -13,6 +13,5 @@ object Program extends App {
 
   val unknownCommands = Analyzer.analyzePcapFiles(new File(inputDir), new File(outputDir))
 
-  println(s"Unknown commands:")
-  unknownCommands.toSeq sortBy (_.headerTransfer.value.commandCode) foreach (println(_))
+  Analyzer.logUnknownCommands(new File(outputDir, "unknown-commands.log"), unknownCommands)
 }

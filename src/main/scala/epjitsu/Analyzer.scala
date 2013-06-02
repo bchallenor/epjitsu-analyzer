@@ -50,18 +50,24 @@ object Analyzer {
 
       assertNoPacketsMissing(singleDeviceBulkUsbPackets, commands)
 
-      outputWriter.write("=" * 80)
-      outputWriter.write('\n')
       val unknownCommands = (commands collect { case command @ Command(PacketPhrase(_, _: UnknownCommandHeader), _, _) => command.withoutUnderlying }).toSet
-      outputWriter.write(s"Unknown commands:")
-      outputWriter.write('\n')
+      unknownCommands
+    } finally {
+      inputStream.close()
+      outputWriter.close()
+    }
+  }
+
+  def logUnknownCommands(outputFile: File, unknownCommands: Set[Command]) {
+    println(s"Writing unknown commands to $outputFile...")
+
+    val outputWriter = new FileWriter(outputFile)
+    try {
       unknownCommands.toSeq sortBy (_.headerTransfer.value.commandCode) foreach { x =>
         outputWriter.write(x.toString)
         outputWriter.write('\n')
       }
-      unknownCommands
     } finally {
-      inputStream.close()
       outputWriter.close()
     }
   }
