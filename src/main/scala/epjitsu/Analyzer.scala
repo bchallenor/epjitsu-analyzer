@@ -55,8 +55,10 @@ object Analyzer {
       val unknownCommands = (commands collect { case command @ Command(PacketPhrase(_, _: UnknownCommandHeader), _, _) => command.withoutUnderlying }).toSet
       outputWriter.write(s"Unknown commands:")
       outputWriter.write('\n')
-      unknownCommands.toSeq sortBy (_.headerTransfer.value.commandCode) foreach (x => outputWriter.write(x.toString))
-      outputWriter.write('\n')
+      unknownCommands.toSeq sortBy (_.headerTransfer.value.commandCode) foreach { x =>
+        outputWriter.write(x.toString)
+        outputWriter.write('\n')
+      }
       unknownCommands
     } finally {
       inputStream.close()
