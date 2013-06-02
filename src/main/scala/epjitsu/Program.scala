@@ -74,7 +74,7 @@ object Program extends App {
     val addressCount = addressToCount.size
 
     val address = if (addressCount > 1) {
-      val (mainAddress, mainAddressCount) = addressToCount.toSeq maxBy { case (_, count) => count }
+      val (mainAddress, mainAddressCount) = addressToCount.toSeq maxBy { case (_, count0) => count0 }
       val mainAddressPercent = mainAddressCount * 100.0 / count
       println(f"Found $addressCount distinct addresses. Choosing address $mainAddress with $mainAddressPercent%.1f% of the packets.")
       mainAddress
