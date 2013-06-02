@@ -6,7 +6,6 @@ import scala.collection.immutable.{SortedSet, BitSet}
 import java.nio.charset.Charset
 import scalaz._
 import Scalaz._
-import scala.annotation.tailrec
 import epjitsu.util.{DeepByteArray, PrettyPrint}
 import epjitsu.Transfer.TransferPhrase
 
@@ -47,8 +46,8 @@ object CommandParser extends Parsers {
     asCommand(sendAnyCommandHeader, anyNonCommand *)
 
   private def asCommand(headerParser: Parser[TransferPhrase[KnownCommandHeader]], bodyParsers: Parser[TransferPhrase[CommandBody[Any]]]*): Parser[Command] = {
-    asCommand(headerParser, sequence1(bodyParsers.toList)) |
-      asCommand(headerParser, anyNonCommand *) ^^ (x => { println(s"Body of command did not meet expectations: $x"); x }) // recover if the body didn't meet our expectations
+    asCommand(headerParser, sequence1(bodyParsers.toList) ~ unexpectedNonCommands ^^ { case x ~ y => x ++ y }) |
+      asCommand(headerParser, unexpectedNonCommands)
   }
 
   private def asCommand(headerParser: Parser[TransferPhrase[CommandHeader]], bodyParsers: Parser[List[TransferPhrase[CommandBody[Any]]]]): Parser[Command] = {
@@ -66,6 +65,12 @@ object CommandParser extends Parsers {
     matchBytes(OutDir, "Bytes matching {0x1b, _}", {
       case Array(0x1b, x) => UnknownCommandHeader(x)
     })
+
+  private lazy val unexpectedNonCommands: Parser[List[TransferPhrase[CommandBody[DeepByteArray]]]] =
+    (anyNonCommand *) ^^ { nonCommandTransfers =>
+      nonCommandTransfers foreach (x => println(s"Recovering from unexpected non-command: ${x.value}"))
+      nonCommandTransfers
+    }
 
   private lazy val anyNonCommand: Parser[TransferPhrase[CommandBody[DeepByteArray]]] =
     acceptMatch("Bytes not matching {0x1b, _}", Function.unlift(x => x.bytes match {
