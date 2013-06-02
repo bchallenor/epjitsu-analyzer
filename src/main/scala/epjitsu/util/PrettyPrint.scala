@@ -21,7 +21,25 @@ object PrettyPrint {
 
   implicit object BytesPrettyPrint extends PrettyPrint[Array[Byte]] {
     val maxSize: Int = 128
-    override def prettyPrint(value: Array[Byte]) = if (value.size <= maxSize) value map ("0x%02x" format _) mkString("{", ", ", "}") else s"${value.size} bytes"
+    val maxRowSize: Int = 16
+    override def prettyPrint(value: Array[Byte]) = {
+      if (value.size <= maxSize) {
+        val sb = new StringBuilder()
+        sb.append("{")
+        sb.append("\n")
+        val rows = (value.iterator grouped maxRowSize withPartial true).toVector
+        val lastRowIdx = rows.size - 1
+        rows.zipWithIndex foreach { case (row, rowIdx) =>
+          val isLast = rowIdx == lastRowIdx
+          sb.append(row map ("0x%02x" format _) mkString ("", ", ", if (!isLast) "," else ""))
+          sb.append("\n")
+        }
+        sb.append("}")
+        sb.toString()
+      } else {
+        f"${value.size} (0x${value.size}%x) bytes"
+      }
+    }
   }
 
   implicit object BitSetPrettyPrint extends PrettyPrint[BitSet] {
