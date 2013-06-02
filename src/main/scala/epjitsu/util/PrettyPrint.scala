@@ -19,15 +19,16 @@ object PrettyPrint {
     override def prettyPrint(value: Byte) = f"0x$value%02x"
   }
 
-  implicit object BytesPrettyPrint extends PrettyPrint[Array[Byte]] {
+  implicit object BytesPrettyPrint extends PrettyPrint[DeepByteArray] {
     val maxSize: Int = 128
     val maxRowSize: Int = 16
-    override def prettyPrint(value: Array[Byte]) = {
-      if (value.size <= maxSize) {
+    override def prettyPrint(value: DeepByteArray) = {
+      val underlying = value.underlying
+      if (underlying.size <= maxSize) {
         val sb = new StringBuilder()
         sb.append("{")
         sb.append("\n")
-        val rows = (value.iterator grouped maxRowSize withPartial true).toVector
+        val rows = (underlying.iterator grouped maxRowSize withPartial true).toVector
         val lastRowIdx = rows.size - 1
         rows.zipWithIndex foreach { case (row, rowIdx) =>
           val isLast = rowIdx == lastRowIdx
@@ -37,7 +38,7 @@ object PrettyPrint {
         sb.append("}")
         sb.toString()
       } else {
-        f"${value.size} (0x${value.size}%x) bytes"
+        f"${underlying.size} (0x${underlying.size}%x) bytes"
       }
     }
   }

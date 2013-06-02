@@ -7,7 +7,7 @@ import java.nio.charset.Charset
 import scalaz._
 import Scalaz._
 import scala.annotation.tailrec
-import epjitsu.util.PrettyPrint
+import epjitsu.util.{DeepByteArray, PrettyPrint}
 import epjitsu.Transfer.TransferPhrase
 
 object CommandParser extends Parsers {
@@ -67,10 +67,10 @@ object CommandParser extends Parsers {
       case Array(0x1b, x) => UnknownCommandHeader(x)
     })
 
-  private lazy val anyNonCommand: Parser[TransferPhrase[CommandBody[Array[Byte]]]] =
+  private lazy val anyNonCommand: Parser[TransferPhrase[CommandBody[DeepByteArray]]] =
     acceptMatch("Bytes not matching {0x1b, _}", Function.unlift(x => x.bytes match {
       case Array(0x1b, _) => None
-      case _ => Some(PacketPhrase(SortedSet(x), CommandBody("unknown non-command", x.direction, x.bytes)))
+      case _ => Some(PacketPhrase(SortedSet(x), CommandBody("unknown non-command", x.direction, DeepByteArray(x.bytes))))
     }))
 
   private lazy val receiveReturnCode = asCommandBody("return code", byte(InDir))
@@ -79,9 +79,9 @@ object CommandParser extends Parsers {
   private lazy val receiveIdentifiers = asCommandBody("manufacturer name -> product name", string(InDir) ^^ lift(x => (x.substring(0, 8).trim, x.substring(8, 32).trim)))
   private lazy val sendBoolean = asCommandBody("boolean", boolean(OutDir))
   private lazy val sendByte = asCommandBody("byte", byte(OutDir))
-  private lazy val sendHeader = asCommandBody("header", bytes(OutDir))
-  private lazy val sendPayload = asCommandBody("payload", payload(OutDir))
-  private lazy val receivePayload = asCommandBody("payload", payload(InDir))
+  private lazy val sendHeader = asCommandBody("header", singleTransferPayload(OutDir))
+  private lazy val sendPayload = asCommandBody("payload", variableLengthPayload(OutDir))
+  private lazy val receivePayload = asCommandBody("payload", variableLengthPayload(InDir))
   private lazy val sendLengthPrefixedPayloadAndChecksum = asCommandBody("payload -> checksum", lengthPrefixedPayloadAndChecksum(OutDir))
 
   private def asCommandBody[A: PrettyPrint](name: String, valueParser: Parser[TransferPhrase[A]]): Parser[TransferPhrase[CommandBody[A]]] = valueParser ^^ { transfer =>
@@ -134,11 +134,15 @@ object CommandParser extends Parsers {
       case x => Charset.forName("UTF-8").decode(ByteBuffer.wrap(x)).toString
     })
 
-  private def payload(direction: TransferDir): Parser[TransferPhrase[Array[Byte]]] = (bytes(direction) +) ^^ { byteTransfers =>
-    byteTransfers.sequence[TransferPhrase, Array[Byte]] map (_.toArray.flatten)
+  private def singleTransferPayload(direction: TransferDir): Parser[TransferPhrase[DeepByteArray]] = bytes(direction) ^^ lift { bytes =>
+    DeepByteArray(bytes)
   }
 
-  private def fixedLengthPayload(direction: TransferDir, length: Int): Parser[TransferPhrase[Array[Byte]]] = {
+  private def variableLengthPayload(direction: TransferDir): Parser[TransferPhrase[DeepByteArray]] = (bytes(direction) +) ^^ { byteTransfers =>
+    byteTransfers.sequence[TransferPhrase, Array[Byte]] map (x => DeepByteArray(x.toArray.flatten))
+  }
+
+  private def fixedLengthPayload(direction: TransferDir, length: Int): Parser[TransferPhrase[DeepByteArray]] = {
     var remaining = length - 1 // checksum handled separately
 
     val bytesParser: Parser[TransferPhrase[Array[Byte]]] = bytes(direction) ^^ { bytes =>
@@ -153,16 +157,16 @@ object CommandParser extends Parsers {
     }
 
     rep1sep(bytesParser, separatorParser) ^^ { byteTransfers =>
-      byteTransfers.sequence[TransferPhrase, Array[Byte]] map (_.toArray.flatten)
+      byteTransfers.sequence[TransferPhrase, Array[Byte]] map (x => DeepByteArray(x.toArray.flatten))
     }
   }
 
-  private def lengthPrefixedPayload(direction: TransferDir): Parser[TransferPhrase[Array[Byte]]] =
+  private def lengthPrefixedPayload(direction: TransferDir): Parser[TransferPhrase[DeepByteArray]] =
     int(direction) into { lengthTransfer =>
       fixedLengthPayload(direction, lengthTransfer.value) ^^ (payloadTransfer => lengthTransfer flatMap (_ => payloadTransfer))
     }
 
-  private def lengthPrefixedPayloadAndChecksum(direction: TransferDir): Parser[TransferPhrase[(Array[Byte], Byte)]] =
+  private def lengthPrefixedPayloadAndChecksum(direction: TransferDir): Parser[TransferPhrase[(DeepByteArray, Byte)]] =
     lengthPrefixedPayload(direction) ~ byte(direction) ^^ { case x ~ y => ^(x, y)(_ -> _) }
 
   private def sequence1[T](parsers: List[Parser[T]]): Parser[List[T]] = {

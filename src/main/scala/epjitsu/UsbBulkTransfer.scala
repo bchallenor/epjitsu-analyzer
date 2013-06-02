@@ -1,6 +1,7 @@
 package epjitsu
 
 import epjitsu.util.PrettyPrint.BytesPrettyPrint
+import epjitsu.util.DeepByteArray
 
 case class UsbBulkTransfer(hostPacket: UsbPacket, devicePacket: UsbPacket) extends Transfer with Packet {
   require(hostPacket.packetType == UsbSubmit, s"Expected host packet to be a 'submit': $hostPacket")
@@ -43,7 +44,7 @@ case class UsbBulkTransfer(hostPacket: UsbPacket, devicePacket: UsbPacket) exten
     case InDir => "<--"
   }
 
-  override def toString: String = f"#${hostPacket.seqNo} $hostAddress $directionStr $deviceAddress ${BytesPrettyPrint.prettyPrint(bytes)}"
+  override def toString: String = f"#${hostPacket.seqNo} $hostAddress $directionStr $deviceAddress ${BytesPrettyPrint.prettyPrint(DeepByteArray(bytes))}"
 }
 
 object UsbBulkTransfer {
