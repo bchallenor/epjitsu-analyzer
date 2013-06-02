@@ -48,7 +48,7 @@ object CommandParser extends Parsers {
 
   private def asCommand(headerParser: Parser[TransferPhrase[KnownCommandHeader]], bodyParsers: Parser[TransferPhrase[CommandBody[Any]]]*): Parser[Command] = {
     asCommand(headerParser, sequence1(bodyParsers.toList)) |
-      asCommand(headerParser, anyNonCommand *) // recover if the body didn't meet our expectations
+      asCommand(headerParser, anyNonCommand *) ^^ (x => { println(s"Body of command did not meet expectations: $x"); x }) // recover if the body didn't meet our expectations
   }
 
   private def asCommand(headerParser: Parser[TransferPhrase[CommandHeader]], bodyParsers: Parser[List[TransferPhrase[CommandBody[Any]]]]): Parser[Command] = {
