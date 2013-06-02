@@ -64,14 +64,14 @@ trait CommandPart {
 }
 
 trait CommandHeader extends CommandPart {
-  def commandCode: Int
+  def commandCode: Byte
   def commandName: String
   override lazy val desc = f"Command 0x$commandCode%02x: $commandName"
 }
 
-case class KnownCommandHeader(commandCode: Int, commandName: String) extends CommandHeader
+case class KnownCommandHeader(commandCode: Byte, commandName: String) extends CommandHeader
 
-case class UnknownCommandHeader(commandCode: Int) extends CommandHeader {
+case class UnknownCommandHeader(commandCode: Byte) extends CommandHeader {
   override def commandName: String = "unknown"
 }
 

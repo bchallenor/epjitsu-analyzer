@@ -4,13 +4,13 @@ import java.io._
 import scalaz._
 import Scalaz._
 import scala.collection.immutable.SortedSet
+import epjitsu.util.PrettyPrint.BytesPrettyPrint
 
 object Program extends App {
   val unknownCommands = parsePcapFiles(new File(args(0)))
-  val unknownCommandsStr = unknownCommands map ("0x%02x" format _) mkString("{", ", ", "}")
-  println(s"Unknown commands: $unknownCommandsStr")
+  println(s"Unknown commands: ${BytesPrettyPrint.prettyPrint(unknownCommands.toArray)}")
 
-  def parsePcapFiles(dir: File): Set[Int] =  {
+  def parsePcapFiles(dir: File): Set[Byte] =  {
     val pcapFiles = dir.listFiles(new FilenameFilter {
       def accept(dir: File, name: String): Boolean = name.endsWith(".pcap")
     })
@@ -19,7 +19,7 @@ object Program extends App {
     unknownCommands
   }
 
-  def parsePcapFile(pcapFile: File): Set[Int] = {
+  def parsePcapFile(pcapFile: File): Set[Byte] = {
     val outputFile = new File(pcapFile.getParentFile, pcapFile.getName + ".log")
     println(s"Decoding $pcapFile to $outputFile...")
 
@@ -54,7 +54,12 @@ object Program extends App {
 
       assertNoPacketsMissing(singleDeviceBulkUsbPackets, commands)
 
+      outputWriter.write("=" * 80)
+      outputWriter.write('\n')
+
       val unknownCommands = (commands collect { case Command(PacketPhrase(_, UnknownCommandHeader(commandCode)), _, _) => commandCode }).toSet
+      outputWriter.write(s"Unknown commands: ${BytesPrettyPrint.prettyPrint(unknownCommands.toArray)}")
+      outputWriter.write('\n')
       unknownCommands
     } finally {
       inputStream.close()
