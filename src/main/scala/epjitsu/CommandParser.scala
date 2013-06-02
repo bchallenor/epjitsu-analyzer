@@ -41,23 +41,19 @@ object CommandParser extends Parsers {
     asCommand(sendCommandHeader(0xd6, "get scan data #d6"), receiveReturnCode, receivePayload) |
     // 0xd8
     // 0xe1
-    unknownCommandPhrase
+    unknownCommand
 
-  private lazy val unknownCommandPhrase: Parser[Command] =
-    sendAnyCommandHeader ~ (anyNonCommand *) ^^ {
-      case headerTransfer ~ bodyTransfers => Command(headerTransfer, bodyTransfers)
-    }
+  private lazy val unknownCommand: Parser[Command] =
+    asCommand(sendAnyCommandHeader, anyNonCommand *)
 
   private def asCommand(headerParser: Parser[TransferPhrase[KnownCommandHeader]], bodyParsers: Parser[TransferPhrase[CommandBody[Any]]]*): Parser[Command] = {
-    val commandParser = headerParser ^^ (Command(_, Nil))
-    asCommand(commandParser, bodyParsers.toList)
+    asCommand(headerParser, sequence1(bodyParsers.toList)) |
+      asCommand(headerParser, anyNonCommand *) // recover if the body didn't meet our expectations
   }
 
-  @tailrec
-  private def asCommand(commandParser: Parser[Command], bodyParsers: List[Parser[TransferPhrase[CommandBody[Any]]]]): Parser[Command] = {
-    bodyParsers match {
-      case Nil => commandParser
-      case bodyParser :: rest => asCommand(commandParser ~ bodyParser ^^ { case x ~ y => x.copy(bodyTransfers = x.bodyTransfers ++ List(y)) }, rest)
+  private def asCommand(headerParser: Parser[TransferPhrase[CommandHeader]], bodyParsers: Parser[List[TransferPhrase[CommandBody[Any]]]]): Parser[Command] = {
+    headerParser ~ bodyParsers ^^ {
+      case headerTransfer ~ bodyTransfers => Command(headerTransfer, bodyTransfers)
     }
   }
 
@@ -168,6 +164,14 @@ object CommandParser extends Parsers {
 
   private def lengthPrefixedPayloadAndChecksum(direction: TransferDir): Parser[TransferPhrase[(Array[Byte], Byte)]] =
     lengthPrefixedPayload(direction) ~ byte(direction) ^^ { case x ~ y => ^(x, y)(_ -> _) }
+
+  private def sequence1[T](parsers: List[Parser[T]]): Parser[List[T]] = {
+    val zero: Parser[List[T]] = parsers.head map (List(_))
+    val f: (Parser[List[T]], Parser[T]) => Parser[List[T]] = (acc, parser) => for { ts <- acc; t <- parser } yield (t :: ts)
+    // parses in the correct direction but accumulates result backwards
+    val reversedParser = parsers.tail.foldLeft(zero)(f)
+    reversedParser ^^ (_.reverse)
+  }
 
   private def lift[A, B](f: A => B): TransferPhrase[A] => TransferPhrase[B] = Functor[TransferPhrase].lift(f)
 }
