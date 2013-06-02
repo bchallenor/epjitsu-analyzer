@@ -29,8 +29,8 @@ object CommandParser extends Parsers {
     // 0xb4
     // 0xb5
     // 0xb6
-    asCommand(sendCommandHeader(0xc3, "set fine cal #1"), receiveReturnCode, sendPayload, receiveReturnCode) |
-    asCommand(sendCommandHeader(0xc4, "set fine cal #2"), receiveReturnCode, sendPayload, receiveReturnCode) |
+    asCommand(sendCommandHeader(0xc3, "set fine cal #1"), receiveReturnCode, sendHeader, sendPayload, receiveReturnCode) |
+    asCommand(sendCommandHeader(0xc4, "set fine cal #2"), receiveReturnCode, sendHeader, sendPayload, receiveReturnCode) |
     asCommand(sendCommandHeader(0xc5, "set lut"), receiveReturnCode, sendPayload, receiveReturnCode) |
     asCommand(sendCommandHeader(0xc6, "set coarse cal"), receiveReturnCode, sendPayload, receiveReturnCode) |
     asCommand(sendCommandHeader(0xd0, "set lamp"), receiveReturnCode, sendBoolean, receiveReturnCode) |
@@ -83,6 +83,7 @@ object CommandParser extends Parsers {
   private lazy val receiveIdentifiers = asCommandBody("manufacturer name -> product name", string(InDir) ^^ lift(x => (x.substring(0, 8).trim, x.substring(8, 32).trim)))
   private lazy val sendBoolean = asCommandBody("boolean", boolean(OutDir))
   private lazy val sendByte = asCommandBody("byte", byte(OutDir))
+  private lazy val sendHeader = asCommandBody("header", bytes(OutDir))
   private lazy val sendPayload = asCommandBody("payload", payload(OutDir))
   private lazy val receivePayload = asCommandBody("payload", payload(InDir))
   private lazy val sendLengthPrefixedPayloadAndChecksum = asCommandBody("payload -> checksum", lengthPrefixedPayloadAndChecksum(OutDir))
