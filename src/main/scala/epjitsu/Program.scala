@@ -22,6 +22,7 @@ object Program extends App {
   val unknownCommands = (pcapFiles map { pcapFile =>
     val commands = Analyzer.analyzePcapFile(pcapFile)
     Analyzer.logCommands(commands, new File(outputDir, pcapFile.getName + ".log"))
+    Analyzer.logHeaderMagic(commands, new File(outputDir, pcapFile.getName + ".h"))
     val unknownCommands = Analyzer.collectUnknownCommands(commands)
     println()
     unknownCommands

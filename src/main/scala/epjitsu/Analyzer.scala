@@ -66,6 +66,53 @@ object Analyzer {
     }
   }
 
+  def logHeaderMagic(commands: Stream[Command], outputFile: File) {
+    println(s"Logging header magic to $outputFile...")
+    val outputWriter = new FileWriter(outputFile)
+    try {
+      logSetWindowMagic(commands, outputWriter, "coarse cal", "CoarseCal", 0xc6)
+      logSetWindowMagic(commands, outputWriter, "fine cal", "FineCal", 0xd2)
+      logSetWindowMagic(commands, outputWriter, "gain/offset tables", "SendCal", 0xc3)
+      logSendCalHeaderMagic(commands, outputWriter, "gain?", "Cal1", 0xc3)
+      logSendCalHeaderMagic(commands, outputWriter, "offset?", "Cal2", 0xc4)
+      logSetWindowMagic(commands, outputWriter, "scan", "Scan", 0xd6)
+    } finally {
+      outputWriter.close()
+    }
+  }
+
+  private def logSetWindowMagic(commands: Stream[Command], outputWriter: FileWriter, humanName: String, varName: String, nextCommandCode: Int) {
+    commands sliding 2 collectFirst {
+      case Stream(
+        Command(PacketPhrase(_, KnownCommandHeader(0xd1, _)), List(_, PacketPhrase(_, CommandBody(_, OutDir, magic: DeepByteArray)), _), _),
+        Command(PacketPhrase(_, KnownCommandHeader(x, _)), _, _)
+      ) if x == nextCommandCode =>
+        println(f"Found set window magic before $humanName ($nextCommandCode%02x)")
+        outputWriter.write(f"/* 1b d1 (set window) before $humanName ($nextCommandCode%02x) */")
+        outputWriter.write('\n')
+        outputWriter.write(s"static unsigned char setWindow${varName}_XXX[] = ${PrettyPrint.BytesPrettyPrint.prettyPrint(magic)};")
+        outputWriter.write('\n')
+    }
+  }
+
+  private def logSendCalHeaderMagic(commands: Stream[Command], outputWriter: FileWriter, humanName: String, varName: String, commandCode: Int) {
+    commands collectFirst {
+      case Command(PacketPhrase(_, KnownCommandHeader(x, _)), List(
+        _,
+        PacketPhrase(_, CommandBody(_, OutDir, header: DeepByteArray)),
+        PacketPhrase(_, CommandBody(_, OutDir, payload: DeepByteArray)),
+        _
+      ), _) if x == commandCode =>
+        println(f"Found $commandCode%02x ($humanName) command header")
+        outputWriter.write(f"/* 1b $commandCode%02x ($humanName) command header */")
+        outputWriter.write('\n')
+        val payloadLength = payload.underlying.length
+        val pretty = PrettyPrint.BytesPrettyPrint.prettyPrint(header).replace("{", f"{ /* plus $payloadLength (0x$payloadLength%x) data bytes */")
+        outputWriter.write(s"static unsigned char send${varName}Header_XXX[] = $pretty;")
+        outputWriter.write('\n')
+    }
+  }
+
   private def discardAllButOneAddress(bulkUsbPackets: Stream[UsbPacket]): Stream[UsbPacket] = {
     val addressToCount = bulkUsbPackets groupBy (x => (x.bus, x.device)) mapValues (_.size)
     val count = addressToCount.values.sum
