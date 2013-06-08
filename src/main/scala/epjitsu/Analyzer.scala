@@ -1,26 +1,13 @@
 package epjitsu
 
 import java.io._
-import scalaz._
-import Scalaz._
 import scala.collection.immutable.SortedSet
+import epjitsu.util.{PrettyPrint, DeepByteArray}
 
 object Analyzer {
-  def analyzePcapFiles(inputDir: File, outputDir: File): Set[Command] =  {
-    val pcapFiles = inputDir.listFiles(new FilenameFilter {
-      def accept(dir: File, name: String): Boolean = name.endsWith(".pcap")
-    })
-
-    val unknownCommands = (pcapFiles.toList map (analyzePcapFile(_, outputDir))).concatenate
-    unknownCommands
-  }
-
-  def analyzePcapFile(pcapFile: File, outputDir: File): Set[Command] = {
-    val outputFile = new File(outputDir, pcapFile.getName + ".log")
-    println(s"Decoding $pcapFile to $outputFile...")
-
+  def analyzePcapFile(pcapFile: File): Stream[Command] = {
+    println(s"Decoding $pcapFile...")
     val inputStream = new BufferedInputStream(new FileInputStream(pcapFile))
-    val outputWriter = new FileWriter(outputFile)
     try {
       val packets = PcapFile.load(inputStream)
 
@@ -31,12 +18,26 @@ object Analyzer {
       val singleDeviceBulkUsbPackets = discardAllButOneAddress(bulkUsbPackets)
 
       val bulkTransfers = UsbBulkTransferDecoder.decode(singleDeviceBulkUsbPackets)
-//      bulkTransfers foreach { x =>
-//        outputWriter.write(x.toString)
-//        outputWriter.write('\n')
-//      }
 
       val commands = Command.flagDuplicates(CommandPhraseDecoder.decode(bulkTransfers))
+
+      assertNoPacketsMissing(singleDeviceBulkUsbPackets, commands)
+
+      commands
+    } finally {
+      inputStream.close()
+    }
+  }
+
+  def collectUnknownCommands(commands: Stream[Command]): Set[Command] = {
+    val unknownCommands = (commands collect { case command @ Command(PacketPhrase(_, _: UnknownCommandHeader), _, _) => command.withoutUnderlying }).toSet
+    unknownCommands
+  }
+
+  def logCommands(commands: Stream[Command], outputFile: File) {
+    println(s"Logging commands to $outputFile...")
+    val outputWriter = new FileWriter(outputFile)
+    try {
       commands foreach { x =>
         if (x.isDuplicate) {
           // Don't print duplicates
@@ -47,24 +48,17 @@ object Analyzer {
           outputWriter.write('\n')
         }
       }
-
-      assertNoPacketsMissing(singleDeviceBulkUsbPackets, commands)
-
-      val unknownCommands = (commands collect { case command @ Command(PacketPhrase(_, _: UnknownCommandHeader), _, _) => command.withoutUnderlying }).toSet
-      unknownCommands
     } finally {
-      inputStream.close()
       outputWriter.close()
     }
   }
 
-  def logUnknownCommands(outputFile: File, unknownCommands: Set[Command]) {
-    println(s"Writing unknown commands to $outputFile...")
-
+  def logUnknownCommands(unknownCommands: Set[Command], outputFile: File) {
+    println(s"Logging unknown commands to $outputFile...")
     val outputWriter = new FileWriter(outputFile)
     try {
-      unknownCommands.toSeq sortBy (_.headerTransfer.value.commandCode) foreach { x =>
-        outputWriter.write(x.toString)
+      (unknownCommands map (_.toString(showUnderlying = false))).toSeq.sorted foreach { x =>
+        outputWriter.write(x)
         outputWriter.write('\n')
       }
     } finally {

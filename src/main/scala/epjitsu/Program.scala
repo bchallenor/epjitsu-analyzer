@@ -1,17 +1,31 @@
 package epjitsu
 
 import java.io._
+import scalaz._
+import Scalaz._
 
 object Program extends App {
-  val currentDir = System.getProperty("user.dir")
+  val currentDir = new File(System.getProperty("user.dir"))
 
-  val inputDir = args sliding 2 collectFirst { case Array("--in-dir", x) => x } getOrElse currentDir
+  val inputDir = args sliding 2 collectFirst { case Array("--in-dir", x) => new File(x) } getOrElse currentDir
   println(s"Input dir: $inputDir")
 
-  val outputDir = args sliding 2 collectFirst { case Array("--out-dir", x) => x } getOrElse inputDir
+  val outputDir = args sliding 2 collectFirst { case Array("--out-dir", x) => new File(x) } getOrElse inputDir
   println(s"Output dir: $outputDir")
 
-  val unknownCommands = Analyzer.analyzePcapFiles(new File(inputDir), new File(outputDir))
+  println()
 
-  Analyzer.logUnknownCommands(new File(outputDir, "unknown-commands.log"), unknownCommands)
+  val pcapFiles = inputDir.listFiles(new FilenameFilter {
+    def accept(dir: File, name: String): Boolean = name.endsWith(".pcap")
+  }).toList
+
+  val unknownCommands = (pcapFiles map { pcapFile =>
+    val commands = Analyzer.analyzePcapFile(pcapFile)
+    Analyzer.logCommands(commands, new File(outputDir, pcapFile.getName + ".log"))
+    val unknownCommands = Analyzer.collectUnknownCommands(commands)
+    println()
+    unknownCommands
+  }).concatenate
+
+  Analyzer.logUnknownCommands(unknownCommands, new File(outputDir, "unknown-commands.log"))
 }
