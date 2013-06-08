@@ -182,7 +182,7 @@ object CommandParser extends Parsers {
 
   private def sequence1[T](parsers: List[Parser[T]]): Parser[List[T]] = {
     val zero: Parser[List[T]] = parsers.head map (List(_))
-    val f: (Parser[List[T]], Parser[T]) => Parser[List[T]] = (acc, parser) => for { ts <- acc; t <- parser } yield (t :: ts)
+    val f: (Parser[List[T]], Parser[T]) => Parser[List[T]] = (acc, parser) => for { ts <- acc; t <- parser } yield t :: ts
     // parses in the correct direction but accumulates result backwards
     val reversedParser = parsers.tail.foldLeft(zero)(f)
     reversedParser ^^ (_.reverse)
