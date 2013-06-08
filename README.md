@@ -5,6 +5,8 @@ I'm trying to add support for the Fujitsu ScanSnap S1300i scanner to the epjitsu
 
 This tool can reconstruct the high-level protocol from the raw USB packets in a `.pcap` file, and write it to a human-readable log.
 
+See [epjitsu-analyzer-logs](https://github.com/bchallenor/epjitsu-analyzer-logs) for the resulting logs.
+
 
 Sample output
 -------------
