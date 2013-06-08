@@ -58,12 +58,12 @@ object CommandParser extends Parsers {
 
   private def sendCommandHeader(commandCode: Int, commandName: String): Parser[TransferPhrase[KnownCommandHeader]] =
     matchBytes(OutDir, f"Bytes matching {0x1b, 0x$commandCode%02x}", {
-      case Array(0x1b, x) if x == commandCode.toByte => KnownCommandHeader(x, commandName)
+      case Array(0x1b, x) if (x & 0xff) == commandCode => KnownCommandHeader(x & 0xff, commandName)
     })
 
   private lazy val sendAnyCommandHeader: Parser[TransferPhrase[UnknownCommandHeader]] =
     matchBytes(OutDir, "Bytes matching {0x1b, _}", {
-      case Array(0x1b, x) => UnknownCommandHeader(x)
+      case Array(0x1b, x) => UnknownCommandHeader(x & 0xff)
     })
 
   private lazy val unexpectedNonCommands: Parser[List[TransferPhrase[CommandBody[DeepByteArray]]]] =
