@@ -13,6 +13,9 @@ object Program extends App {
   val outputDir = args sliding 2 collectFirst { case Array("--out-dir", x) => new File(x) } getOrElse inputDir
   println(s"Output dir: $outputDir")
 
+  val scannerName = args sliding 2 collectFirst { case Array("--scanner-name", x) => x } getOrElse "XXX"
+  println(s"Scanner name: $scannerName")
+
   println()
 
   val pcapFiles = inputDir.listFiles(new FilenameFilter {
@@ -30,7 +33,7 @@ object Program extends App {
     fileNameNoExt match {
       case ScanConfig(scanConfig) =>
         val inRes = scanConfig.inRes
-        Analyzer.logHeaderMagic(commands, new File(outputDir, inRes.toString + "@" + pcapFile.getName + ".h"), inRes)
+        Analyzer.logHeaderMagic(commands, new File(outputDir, inRes.toString + "@" + pcapFile.getName + ".h"), scannerName, inRes)
       case _ =>
     }
 

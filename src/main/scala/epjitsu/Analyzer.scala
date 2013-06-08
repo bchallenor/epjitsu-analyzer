@@ -66,28 +66,28 @@ object Analyzer {
     }
   }
 
-  def logHeaderMagic(commands: Stream[Command], outputFile: File, inRes: InRes.Value) {
+  def logHeaderMagic(commands: Stream[Command], outputFile: File, scannerName: String, inRes: InRes.Value) {
     println(s"Logging header magic to $outputFile...")
     val outputWriter = new FileWriter(outputFile)
     try {
-      logCoarseCalMagic(commands, outputWriter)
+      logCoarseCalMagic(commands, outputWriter, scannerName)
       outputWriter.write('\n')
 
-      outputWriter.write(s"/*************** XXX ${inRes}dpi *************/")
+      outputWriter.write(s"/*************** $scannerName ${inRes}dpi *************/")
       outputWriter.write('\n')
 
-      logSetWindowMagic(commands, outputWriter, "coarse cal", "CoarseCal", 0xc6, inRes)
-      logSetWindowMagic(commands, outputWriter, "fine cal", "FineCal", 0xd2, inRes)
-      logSetWindowMagic(commands, outputWriter, "gain/offset tables", "SendCal", 0xc3, inRes)
-      logSendCalHeaderMagic(commands, outputWriter, "gain?", "Cal1", 0xc3, inRes)
-      logSendCalHeaderMagic(commands, outputWriter, "offset?", "Cal2", 0xc4, inRes)
-      logSetWindowMagic(commands, outputWriter, "scan", "Scan", 0xd6, inRes)
+      logSetWindowMagic(commands, outputWriter, "coarse cal", "CoarseCal", 0xc6, scannerName, inRes)
+      logSetWindowMagic(commands, outputWriter, "fine cal", "FineCal", 0xd2, scannerName, inRes)
+      logSetWindowMagic(commands, outputWriter, "gain/offset tables", "SendCal", 0xc3, scannerName, inRes)
+      logSendCalHeaderMagic(commands, outputWriter, "gain?", "Cal1", 0xc3, scannerName, inRes)
+      logSendCalHeaderMagic(commands, outputWriter, "offset?", "Cal2", 0xc4, scannerName, inRes)
+      logSetWindowMagic(commands, outputWriter, "scan", "Scan", 0xd6, scannerName, inRes)
     } finally {
       outputWriter.close()
     }
   }
 
-  private def logCoarseCalMagic(commands: Stream[Command], outputWriter: FileWriter) {
+  private def logCoarseCalMagic(commands: Stream[Command], outputWriter: FileWriter, scannerName: String) {
     commands collectFirst {
       case Command(PacketPhrase(_, KnownCommandHeader(0xc6, _)), List(
         _,
@@ -104,12 +104,12 @@ object Analyzer {
         unifiedUnderlying(7) = 0xff.toByte
         val unifiedMagic = DeepByteArray(unifiedUnderlying)
 
-        outputWriter.write(s"static unsigned char coarseCalData_XXX[] = ${PrettyPrint.BytesPrettyPrint.prettyPrint(unifiedMagic)};")
+        outputWriter.write(s"static unsigned char coarseCalData_${scannerName.toUpperCase}[] = ${PrettyPrint.BytesPrettyPrint.prettyPrint(unifiedMagic)};")
         outputWriter.write('\n')
     }
   }
 
-  private def logSetWindowMagic(commands: Stream[Command], outputWriter: FileWriter, humanName: String, varName: String, nextCommandCode: Int, inRes: InRes.Value) {
+  private def logSetWindowMagic(commands: Stream[Command], outputWriter: FileWriter, humanName: String, varName: String, nextCommandCode: Int, scannerName: String, inRes: InRes.Value) {
     commands sliding 2 collectFirst {
       case Stream(
         Command(PacketPhrase(_, KnownCommandHeader(0xd1, _)), List(_, PacketPhrase(_, CommandBody(_, OutDir, magic: DeepByteArray)), _), _),
@@ -118,12 +118,12 @@ object Analyzer {
         println(f"Found set window magic before $humanName ($nextCommandCode%02x)")
         outputWriter.write(f"/* 1b d1 (set window) before $humanName ($nextCommandCode%02x) */")
         outputWriter.write('\n')
-        outputWriter.write(s"static unsigned char setWindow${varName}_XXX_$inRes[] = ${PrettyPrint.BytesPrettyPrint.prettyPrint(magic)};")
+        outputWriter.write(s"static unsigned char setWindow${varName}_${scannerName.toUpperCase}_$inRes[] = ${PrettyPrint.BytesPrettyPrint.prettyPrint(magic)};")
         outputWriter.write('\n')
     }
   }
 
-  private def logSendCalHeaderMagic(commands: Stream[Command], outputWriter: FileWriter, humanName: String, varName: String, commandCode: Int, inRes: InRes.Value) {
+  private def logSendCalHeaderMagic(commands: Stream[Command], outputWriter: FileWriter, humanName: String, varName: String, commandCode: Int, scannerName: String, inRes: InRes.Value) {
     commands collectFirst {
       case Command(PacketPhrase(_, KnownCommandHeader(x, _)), List(
         _,
@@ -136,7 +136,7 @@ object Analyzer {
         outputWriter.write('\n')
         val payloadLength = payload.underlying.length
         val pretty = PrettyPrint.BytesPrettyPrint.prettyPrint(header).replace("{", f"{ /* plus $payloadLength (0x$payloadLength%x) data bytes */")
-        outputWriter.write(s"static unsigned char send${varName}Header_XXX_$inRes[] = $pretty;")
+        outputWriter.write(s"static unsigned char send${varName}Header_${scannerName.toUpperCase}_$inRes[] = $pretty;")
         outputWriter.write('\n')
     }
   }
