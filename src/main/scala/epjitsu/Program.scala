@@ -20,13 +20,27 @@ object Program extends App {
   }).toList
 
   val unknownCommands = (pcapFiles map { pcapFile =>
+    assert(pcapFile.getName.endsWith(".pcap"))
+    val fileNameNoExt = pcapFile.getName.dropRight(".pcap".length)
+
     val commands = Analyzer.analyzePcapFile(pcapFile)
+
     Analyzer.logCommands(commands, new File(outputDir, pcapFile.getName + ".log"))
-    Analyzer.logHeaderMagic(commands, new File(outputDir, pcapFile.getName + ".h"))
+
+    fileNameNoExt match {
+      case ScanConfig(scanConfig) =>
+        val inRes = scanConfig.inRes
+        Analyzer.logHeaderMagic(commands, new File(outputDir, inRes.toString + "@" + pcapFile.getName + ".h"), inRes)
+      case _ =>
+    }
+
     val unknownCommands = Analyzer.collectUnknownCommands(commands)
+
     println()
     unknownCommands
   }).concatenate
 
   Analyzer.logUnknownCommands(unknownCommands, new File(outputDir, "unknown-commands.log"))
 }
+
+
