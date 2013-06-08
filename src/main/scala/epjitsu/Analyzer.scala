@@ -70,6 +70,9 @@ object Analyzer {
     println(s"Logging header magic to $outputFile...")
     val outputWriter = new FileWriter(outputFile)
     try {
+      logCoarseCalMagic(commands, outputWriter)
+      outputWriter.write('\n')
+
       outputWriter.write(s"/*************** XXX ${inRes}dpi *************/")
       outputWriter.write('\n')
 
@@ -81,6 +84,28 @@ object Analyzer {
       logSetWindowMagic(commands, outputWriter, "scan", "Scan", 0xd6, inRes)
     } finally {
       outputWriter.close()
+    }
+  }
+
+  private def logCoarseCalMagic(commands: Stream[Command], outputWriter: FileWriter) {
+    commands collectFirst {
+      case Command(PacketPhrase(_, KnownCommandHeader(0xc6, _)), List(
+        _,
+        PacketPhrase(_, CommandBody(_, OutDir, magic: DeepByteArray)),
+        _
+      ), _) =>
+        println(f"Found coarse calibration default payload")
+        outputWriter.write(f"/*************** COARSE CALIBRATION DEFAULT PAYLOAD *************/")
+        outputWriter.write('\n')
+
+        // invalidate bytes 5 and 7 as they will be set by the calibration routine anyway
+        val unifiedUnderlying = magic.underlying.clone()
+        unifiedUnderlying(5) = 0xff.toByte
+        unifiedUnderlying(7) = 0xff.toByte
+        val unifiedMagic = DeepByteArray(unifiedUnderlying)
+
+        outputWriter.write(s"static unsigned char coarseCalData_XXX[] = ${PrettyPrint.BytesPrettyPrint.prettyPrint(unifiedMagic)};")
+        outputWriter.write('\n')
     }
   }
 
