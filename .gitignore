@@ -1,4 +1,5 @@
 target/
+.history
 
 .idea/
 .idea_modules/
