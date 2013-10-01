@@ -35,7 +35,7 @@ object CommandParser extends Parsers {
     asCommand(sendCommandHeader(0xd0, "set lamp"), receiveReturnCode, sendBoolean, receiveReturnCode) |
     asCommand(sendCommandHeader(0xd1, "set window"), receiveReturnCode, sendPayload, receiveReturnCode) |
     asCommand(sendCommandHeader(0xd2, "get scan data #d2"), receiveReturnCode, receivePayload) |
-    asCommand(sendCommandHeader(0xd3, "get scan data #d3"), receiveReturnCode, receivePayload) |
+    asCommand(sendCommandHeader(0xd3, "get scan data #d3"), receiveReturnCode, receivePayloadAndTrailer) |
     asCommand(sendCommandHeader(0xd4, "set paper feed"), receiveReturnCode, sendByte, receiveReturnCode) |
     asCommand(sendCommandHeader(0xd6, "start scan"), receiveReturnCode) |
     //asCommand(sendCommandHeader(0xd8, "???"), receiveReturnCode, sendByte, receiveReturnCode) |
@@ -88,6 +88,7 @@ object CommandParser extends Parsers {
   private lazy val sendHeader = asCommandBody("header", singleTransferPayload(OutDir))
   private lazy val sendPayload = asCommandBody("payload", variableLengthPayload(OutDir))
   private lazy val receivePayload = asCommandBody("payload", variableLengthPayload(InDir))
+  private lazy val receivePayloadAndTrailer = asCommandBody("payload -> trailer", variableLengthPayloadAndTrailer(InDir, 8))
   private lazy val sendLengthPrefixedPayloadAndChecksum = asCommandBody("payload -> checksum", lengthPrefixedPayloadAndChecksum(OutDir))
 
   private def asCommandBody[A: PrettyPrint](name: String, valueParser: Parser[TransferPhrase[A]]): Parser[TransferPhrase[CommandBody[A]]] = valueParser ^^ { transfer =>
@@ -152,6 +153,13 @@ object CommandParser extends Parsers {
   private def variableLengthPayload(direction: TransferDir): Parser[TransferPhrase[DeepByteArray]] = (bytes(direction) +) ^^ { byteTransfers =>
     byteTransfers.sequence[TransferPhrase, Array[Byte]] map (x => DeepByteArray(x.toArray.flatten))
   }
+
+  private def variableLengthPayloadAndTrailer(direction: TransferDir, trailerLength: Int): Parser[TransferPhrase[(DeepByteArray, DeepByteArray)]] = variableLengthPayload(direction) ^^ lift { x =>
+      val payloadAndTrailerBytes = x.underlying
+      assert(payloadAndTrailerBytes.length >= trailerLength, s"Expected payload of at least $trailerLength bytes, but found only ${payloadAndTrailerBytes.length} bytes")
+      val (payloadBytes, trailerBytes) = payloadAndTrailerBytes.splitAt(payloadAndTrailerBytes.length - trailerLength)
+      (DeepByteArray.make(payloadBytes), DeepByteArray.make(trailerBytes))
+    }
 
   private def fixedLengthPayload(direction: TransferDir, length: Int): Parser[TransferPhrase[DeepByteArray]] = {
     var remaining = length - 1 // checksum handled separately
