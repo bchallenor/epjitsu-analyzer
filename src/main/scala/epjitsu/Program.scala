@@ -30,6 +30,8 @@ object Program extends App {
 
     Analyzer.logCommands(commands, new File(outputDir, pcapFile.getName + ".log"))
 
+    Analyzer.logScannerData(commands, new File(outputDir, pcapFile.getName + ".dat"))
+
     fileNameNoExt match {
       case ScanConfig(scanConfig) =>
         val inRes = scanConfig.inRes

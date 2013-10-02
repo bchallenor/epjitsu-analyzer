@@ -65,6 +65,20 @@ object Analyzer {
     }
   }
 
+  def logScannerData(commands: Stream[Command], outputFile: File) {
+    val os = new BufferedOutputStream(new FileOutputStream(outputFile))
+    try {
+      commands foreach { command =>
+        // todo: this is horrible; should really have case classes for these
+        if (command.headerTransfer.value.commandCode == 0xd3) {
+          val payload = command.bodyTransfers(1).value.value.asInstanceOf[(DeepByteArray, DeepByteArray)]._1.underlying
+          os.write(payload)
+        }
+      }
+    }
+    finally os.close()
+  }
+
   def logHeaderMagic(commands: Stream[Command], outputFile: File, scannerName: String, inRes: InRes.Value) {
     println(s"Logging header magic to $outputFile...")
     val outputWriter = new FileWriter(outputFile)
