@@ -9,19 +9,18 @@ object Analyzer {
     println(s"Decoding $pcapFile...")
     val inputStream = new BufferedInputStream(new FileInputStream(pcapFile))
     try {
-      val packets = PcapFile.load(inputStream)
+      val fileDecoder = new PcapFileDecoder(Map(
+        LinuxUsbNetworkType -> new PcapPacketStreamDecoder(LinuxUsbPcapPacketDecoder, LinuxUsbPcapPacketTranslator),
+        WindowsUsbNetworkType -> new PcapPacketStreamDecoder(WindowsUsbPcapPacketDecoder, WindowsUsbPcapPacketTranslator)
+      ))
 
-      val usbPackets = (packets collect { case PcapPacket(_, _, usb: UsbPacket) => usb }).toStream
+      val usbTransfers = fileDecoder.decode(inputStream)
 
-      val bulkUsbPackets = usbPackets filter (_.xferType == UsbBulk)
+      val singleDeviceUsbTransfers = discardAllButOneAddress(usbTransfers)
 
-      val singleDeviceBulkUsbPackets = discardAllButOneAddress(bulkUsbPackets)
+      val commands = Command.flagDuplicates(CommandTranslator.translate(singleDeviceUsbTransfers))
 
-      val bulkTransfers = UsbBulkTransferDecoder.decode(singleDeviceBulkUsbPackets)
-
-      val commands = Command.flagDuplicates(CommandPhraseDecoder.decode(bulkTransfers))
-
-      assertNoPacketsMissing(singleDeviceBulkUsbPackets, commands)
+      assertNoPacketsMissing(singleDeviceUsbTransfers, commands)
 
       commands
     } finally {
@@ -141,8 +140,8 @@ object Analyzer {
     }
   }
 
-  private def discardAllButOneAddress(bulkUsbPackets: Stream[UsbPacket]): Stream[UsbPacket] = {
-    val addressToCount = bulkUsbPackets groupBy (x => (x.bus, x.device)) mapValues (_.size)
+  private def discardAllButOneAddress(usbTransfers: Stream[UsbTransfer]): Stream[UsbTransfer] = {
+    val addressToCount = usbTransfers groupBy (x => (x.bus, x.device)) mapValues (_.size)
     val count = addressToCount.values.sum
     val addressCount = addressToCount.size
 
@@ -154,21 +153,20 @@ object Analyzer {
     } else if (addressCount == 1) {
       addressToCount.keys.head
     } else {
-      sys.error("Found no bulk USB packets")
+      sys.error("Found no USB transfers")
     }
 
-    bulkUsbPackets filter (x => (x.bus, x.device) == address)
+    usbTransfers filter (x => (x.bus, x.device) == address)
   }
 
-  private def assertNoPacketsMissing(originalPackets: Stream[UsbPacket], parsedCommands: Stream[Command]) {
+  private def assertNoPacketsMissing(originalPackets: Stream[Transfer], parsedCommands: Stream[Command]) {
     val originalSeqNos: Set[Long] = (originalPackets.iterator map (_.seqNo)).to[SortedSet]
 
     val parsedSeqNos: Set[Long] = (for {
       command <- parsedCommands.iterator
       commandPart <- command.headerTransfer :: command.bodyTransfers
-      transfer @ (_transfer: UsbBulkTransfer) <- commandPart.packets
-      packet <- transfer.hostPacket :: transfer.devicePacket :: Nil
-    } yield packet.seqNo).to[SortedSet]
+      transfer <- commandPart.packets
+    } yield transfer.seqNo).to[SortedSet]
 
     assert(originalSeqNos == parsedSeqNos, s"Expected seq numbers to be the same after parsing, but found additional: ${parsedSeqNos -- originalSeqNos}, missing: ${originalSeqNos -- parsedSeqNos}")
   }

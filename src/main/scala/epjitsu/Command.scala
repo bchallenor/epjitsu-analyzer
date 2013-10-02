@@ -84,14 +84,14 @@ case class CommandBody[+A](name: String, direction: TransferDir, value: A)(impli
   override lazy val desc = f"$directionStr $name: ${pp.prettyPrint(value)}"
 }
 
-object CommandPhraseDecoder extends PacketStreamDecoder[Transfer, Command] {
-  override def decode(transfers: Stream[Transfer]): Stream[Command] = {
-    decodePhrase(transfers)
+object CommandTranslator extends PacketStreamTranslator[Transfer, Command] {
+  override def translate(transfers: Stream[Transfer]): Stream[Command] = {
+    translatePhrase(transfers)
   }
 
-  private def decodePhrase(in: Reader[Transfer]): Stream[Command] = {
+  private def translatePhrase(in: Reader[Transfer]): Stream[Command] = {
     CommandParser.commandOrNone(in) match {
-      case CommandParser.Success(commandOrNone, rest) => commandOrNone map (_ #:: decodePhrase(rest)) getOrElse Stream.Empty
+      case CommandParser.Success(commandOrNone, rest) => commandOrNone map (_ #:: translatePhrase(rest)) getOrElse Stream.Empty
       case CommandParser.NoSuccess(msg, _) => sys.error(msg)
     }
   }

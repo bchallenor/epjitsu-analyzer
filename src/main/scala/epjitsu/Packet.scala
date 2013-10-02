@@ -19,6 +19,16 @@ trait PacketDecoder[-I, +P <: Packet] {
   def decode(seqNo: Long, input: I): P
 }
 
-trait PacketStreamDecoder[P <: Packet, Q <: Packet] {
-  def decode(inputPackets: Stream[P]): Stream[Q]
+trait PacketStreamDecoder[-I, +P <: Packet] {
+  def decode(input: I): Stream[P]
+}
+
+trait PacketStreamTranslator[-P <: Packet, +Q <: Packet] {
+  def translate(inputPackets: Stream[P]): Stream[Q]
+}
+
+object PacketStreamTranslator {
+  def identity[P <: Packet] = new PacketStreamTranslator[P, P] {
+    override def translate(inputPackets: Stream[P]): Stream[P] = inputPackets
+  }
 }
